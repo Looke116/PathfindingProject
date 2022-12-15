@@ -1,5 +1,6 @@
 package application;
 
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
@@ -53,19 +54,50 @@ public class MainViewController {
         double maxY = canvas.getWidth();
         List<Polygon> polygonList = new ArrayList<>();
 
-        for (int i = 0; i < 5; i++) {
-            int verticesNumber = random.nextInt(3, 7);
-            double[] points = new double[verticesNumber * 2];
-            double[] centerPoint = {random.nextDouble(0, maxX), random.nextDouble(0, maxY)};
+        int PolygonTotal = random.nextInt(5,10);
+        for (int i = 0; i < PolygonTotal; i++) {
+            boolean isIntersected;
+            Polygon polygon;
+            do{
+                polygon = new Polygon();
+                isIntersected = false;
+                int verticesNumber = random.nextInt(3, 7);
+                Point2D[] points = pointList.toArray(new Point2D[verticesNumber]);
+                boolean PointInPolygon = false;
+                Point2D centerPoint;
+                do {
+                    centerPoint = new Point2D(random.nextDouble(50, maxX-50), random.nextDouble(50, maxY-50));
 
-            for (int j = 0; j < verticesNumber; j++) {
-                points[j * 2] = random.nextDouble(centerPoint[0] - 100, centerPoint[0] + 100);
-                points[j * 2 + 1] = random.nextDouble(centerPoint[1] - 100, centerPoint[1] + 100);
-            }
+                    if (polygon.contains(centerPoint)){
+                        PointInPolygon = true;
+                        break;
+                    }
+                } while (PointInPolygon);
 
-            Polygon polygon = new Polygon(sortPointsClockwise(points));
+                for (int j = 0; j < verticesNumber; j++) {
+                    points[j] = new Point2D(random.nextDouble(centerPoint.getX() - 50,centerPoint.getX() + 50), random.nextDouble(centerPoint.getY() - 50,centerPoint.getY() + 50));
+                }
+                sortPointsClockwise(points, centerPoint);
+
+                ArrayList<Double> list = null;
+
+                for (Point2D point : points) {
+                    polygon.getPoints().add(point.getX());
+                    polygon.getPoints().add(point.getY());
+                }
+
+                for(Polygon p:polygonList) {
+                    if (p.getBoundsInParent().intersects(polygon.getBoundsInParent())){
+                        isIntersected = true;
+                        break;
+                    }
+                }
+                System.out.println(polygon);
+            }while(isIntersected);
+
             setRandomColor(polygon);
             polygonList.add(polygon);
+
         }
 
         for (Polygon polygon : polygonList) {
@@ -73,54 +105,53 @@ public class MainViewController {
         }
     }
 
-    private double[] sortPointsClockwise(double[] points) {
-        List<Point2D> pointList = new ArrayList<>();
-        Map<Double, List<Integer>> sortList = new HashMap<>();
-
-        // Convert to ArrayList
-        for (int i = 0; i < points.length / 2; i++) {
-            pointList.add(new Point2D(points[i * 2], points[i * 2 + 1]));
-        }
-
-        // Compute the center point relative to other all points
-        double centerX = 0, centerY = 0;
-        for (Point2D point : pointList) {
-            centerX += point.getX();
-            centerY += point.getY();
-        }
-        Point2D centerPoint = new Point2D(centerX, centerY);
-
-        // Compute the angle for each point relative to the center point
-        // and store it along it's index
-        for (int i = 0; i < pointList.size(); i++) {
-            Point2D point = pointList.get(i);
-            double angle = Math.atan2(
-                    point.getY() - centerPoint.getY(),
-                    point.getX() - centerPoint.getX()
-            );
-
-            List<Integer> list;
-            if (sortList.containsKey(angle)) {
-                list = sortList.get(angle);
-            } else {
-                list = new ArrayList<>();
+    private static void sortPointsClockwise(Point2D[] points, Point2D center) {
+        boolean changed;
+        do {
+            changed = false;
+            for (int i = 0; i < points.length - 1; i++) {
+                if (comparePoint(points[i + 1], points[i], center)) {
+                    Point2D temp = points[i];
+                    points[i] = points[i + 1];
+                    points[i + 1] = temp;
+                    changed = true;
+                }
             }
-            list.add(i);
-            sortList.put(angle, list);
-        }
+        } while (changed);
+    }
 
-        // Sort the list by the angle
-        Set<Double> angles = sortList.keySet();
-        List<Double> sortedAngles = angles.stream().sorted().toList();
-        List<Double> outputPoints = new ArrayList<>();
-        for (Double angle : sortedAngles) {
-            for (Integer index : sortList.get(angle)) {
-                outputPoints.add(pointList.get(index).getX());
-                outputPoints.add(pointList.get(index).getY());
+    private static boolean comparePoint(Point2D a, Point2D b, Point2D center) {
+
+        if (a.getX() - center.getX() >= 0 && b.getX() - center.getX() < 0) {
+            return true;
+        }
+        if (a.getX() - center.getX() < 0 && b.getX() - center.getX() >= 0) {
+            return false;
+        }
+        if (a.getX() - center.getX() == 0 && b.getX() - center.getX() == 0) {
+            if (a.getY() - center.getY() >= 0 || b.getY() - center.getY() >= 0) {
+                return a.getY() > b.getY();
             }
+            return b.getY() > a.getY();
         }
 
-        return outputPoints.stream().mapToDouble(i -> i).toArray();
+        // compute the cross product of vectors (center -> a) x (center -> b)
+        double det = (a.getX() - center.getX()) * (b.getY() - center.getY()) -
+                (b.getX() - center.getX()) * (a.getY() - center.getY());
+        if (det < 0) {
+            return true;
+        }
+        if (det > 0) {
+            return false;
+        }
+
+        // points a and b are on the same line from the center
+        // check which point is closer to the center
+        double d1 = (a.getX() - center.getX()) * (a.getX() - center.getX()) +
+                (a.getY() - center.getY()) * (a.getY() - center.getY());
+        double d2 = (b.getX() - center.getX()) * (b.getX() - center.getX()) +
+                (b.getY() - center.getY()) * (b.getY() - center.getY());
+        return d1 > d2;
     }
 
     @FXML
