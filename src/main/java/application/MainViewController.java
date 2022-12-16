@@ -1,6 +1,5 @@
 package application;
 
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
@@ -9,16 +8,20 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Shape;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import org.json.JSONWriter;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class MainViewController {
 
@@ -27,8 +30,13 @@ public class MainViewController {
     @FXML
     private ToggleButton drawToggle;
 
+    public final int MIN_POLYGON_NUMBER = 3;
+    public final int MAX_POLYGON_NUMBER = 10;
+    public final int MIN_VERTICES = 3;
+    public final int MAX_VERTICES = 15;
+    public final int SHAPE_SIZE = 100;
     private final Random random = new Random();
-    private List<Point2D> pointList = new ArrayList<>();
+    private final List<Point2D> pointList = new ArrayList<>();
 
     private void draw(Node node) {
         canvas.getChildren().add(node);
@@ -54,46 +62,45 @@ public class MainViewController {
         double maxY = canvas.getWidth();
         List<Polygon> polygonList = new ArrayList<>();
 
-        int PolygonTotal = random.nextInt(5,10);
+        int PolygonTotal = random.nextInt(MIN_POLYGON_NUMBER, MAX_POLYGON_NUMBER);
         for (int i = 0; i < PolygonTotal; i++) {
             boolean isIntersected;
             Polygon polygon;
-            do{
+            do {
                 polygon = new Polygon();
                 isIntersected = false;
-                int verticesNumber = random.nextInt(3, 7);
+                int verticesNumber = random.nextInt(MIN_VERTICES, MAX_VERTICES);
                 Point2D[] points = pointList.toArray(new Point2D[verticesNumber]);
                 boolean PointInPolygon = false;
                 Point2D centerPoint;
-                do {
-                    centerPoint = new Point2D(random.nextDouble(50, maxX-50), random.nextDouble(50, maxY-50));
 
-                    if (polygon.contains(centerPoint)){
-                        PointInPolygon = true;
-                        break;
-                    }
+                do {
+                    centerPoint = new Point2D(
+                            random.nextDouble(SHAPE_SIZE, maxX - SHAPE_SIZE),
+                            random.nextDouble(SHAPE_SIZE, maxY - SHAPE_SIZE)
+                    );
+                    PointInPolygon = polygon.contains(centerPoint);
                 } while (PointInPolygon);
 
                 for (int j = 0; j < verticesNumber; j++) {
-                    points[j] = new Point2D(random.nextDouble(centerPoint.getX() - 50,centerPoint.getX() + 50), random.nextDouble(centerPoint.getY() - 50,centerPoint.getY() + 50));
+                    points[j] = new Point2D(
+                            random.nextDouble(centerPoint.getX() - SHAPE_SIZE, centerPoint.getX() + SHAPE_SIZE),
+                            random.nextDouble(centerPoint.getY() - SHAPE_SIZE, centerPoint.getY() + SHAPE_SIZE));
                 }
                 sortPointsClockwise(points, centerPoint);
-
-                ArrayList<Double> list = null;
 
                 for (Point2D point : points) {
                     polygon.getPoints().add(point.getX());
                     polygon.getPoints().add(point.getY());
                 }
 
-                for(Polygon p:polygonList) {
-                    if (p.getBoundsInParent().intersects(polygon.getBoundsInParent())){
+                for (Polygon p : polygonList) {
+                    if (p.getBoundsInParent().intersects(polygon.getBoundsInParent())) {
                         isIntersected = true;
                         break;
                     }
                 }
-                System.out.println(polygon);
-            }while(isIntersected);
+            } while (isIntersected);
 
             setRandomColor(polygon);
             polygonList.add(polygon);
@@ -259,6 +266,7 @@ public class MainViewController {
             if (((Circle) element).getFill() != Color.RED) continue;
             if (((Circle) element).getRadius() != 5) continue;
 
+            //noinspection SuspiciousListRemoveInLoop
             elements.remove(i);
         }
         canvas.getChildren().add(circle);
@@ -283,22 +291,35 @@ public class MainViewController {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Import From File");
         File file = fileChooser.showOpenDialog(filePickerWindow);
-        List<String> lines = readAllLines(file);
+
+        if (file == null) return;
 
         clearCanvas();
-        for (String line : lines) {
-            String[] elements = line.split(" ");
-            switch (elements[0]) {
-                case "Polygon:":
-                    Polygon polygon;
-                    List<Double> pointList = new ArrayList<>();
-                    for (int i = 1; i < elements.length; i++) {
-                        pointList.add(Double.valueOf(elements[i]));
-                    }
-                    double[] points = pointList.stream().mapToDouble(i -> i).toArray();
-                    polygon = new Polygon(points);
-                    draw(polygon);
+        String content = readAllLines(file);
+        content.trim();
+        JSONObject object = new JSONObject(content);
+
+        JSONArray polygonArray = object.getJSONArray("Polygons");
+        JSONArray circleArray = object.getJSONArray("Circles");
+        for (int i = 0; i < polygonArray.length(); i++) {
+            JSONArray pointArray = polygonArray.getJSONObject(i).getJSONArray("points");
+            double[] points = new double[pointArray.length()];
+
+            for (int j = 0; j < pointArray.length(); j++) {
+                points[j] = pointArray.getDouble(j);
             }
+
+            Polygon polygon = new Polygon(points);
+            polygon.setFill(Paint.valueOf(polygonArray.getJSONObject(i).getString("color")));
+            draw(polygon);
+        }
+
+        for (int i = 0; i < circleArray.length(); i++) {
+            double centerX = circleArray.getJSONObject(i).getDouble("centerX");
+            double centerY = circleArray.getJSONObject(i).getDouble("centerY");
+            double radius = circleArray.getJSONObject(i).getDouble("radius");
+            Circle circle =new Circle(centerX,centerY,radius);
+            circle.setFill(Paint.valueOf(polygonArray.getJSONObject(i).getString("color")));
         }
     }
 
@@ -310,31 +331,53 @@ public class MainViewController {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export to File");
         File file = fileChooser.showSaveDialog(filePickerWindow);
+
+        if (file == null) return;
+
         try {
             file.createNewFile();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        JSONWriter writer;
         try (FileWriter fileWriter = new FileWriter(file)) {
+            JSONArray polygonArray = new JSONArray();
+            JSONArray circleArray = new JSONArray();
+
             for (Node element : elements) {
                 if (element.getClass() == Polygon.class) {
-                    List<Double> points = ((Polygon) element).getPoints();
+                    JSONArray points = new JSONArray();
+                    points.putAll(((Polygon) element).getPoints());
 
-                    fileWriter.write("Polygon: ");
-                    for (Double point : points) {
-                        fileWriter.write(point + " ");
-                    }
-                    fileWriter.write("\n");
+                    JSONObject object = new JSONObject();
+                    object.put("points", points);
+                    object.put("color", ((Polygon) element).getFill());
+
+                    polygonArray.put(object);
+                } else if (element.getClass() == Circle.class) {
+                    if (((Circle) element).getFill() == Color.RED) continue;
+
+                    JSONObject object = new JSONObject();
+                    object.put("centerX", ((Circle) element).getCenterX());
+                    object.put("centerY", ((Circle) element).getCenterY());
+                    object.put("radius", ((Circle) element).getRadius());
+                    object.put("color", ((Polygon) element).getFill());
+
+                    polygonArray.put(object);
                 }
             }
+
+            JSONObject object = new JSONObject();
+            object.put("Polygons", polygonArray);
+            object.put("Circles", circleArray);
+
+            fileWriter.write(object.toString());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public List<String> readAllLines(File file) {
+    public String readAllLines(File file) {
         List<String> strings = new ArrayList<>();
 
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(file))) {
@@ -345,6 +388,11 @@ public class MainViewController {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return strings;
+
+        String output = new String();
+        for (String string : strings) {
+            output += string;
+        }
+        return output;
     }
 }

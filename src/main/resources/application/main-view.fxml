@@ -12,8 +12,8 @@
                     <children>
                         <Button layoutX="4.0" layoutY="14.0" mnemonicParsing="false" onAction="#genRandomPolygons" onMouseEntered="#showHoverText" onMouseExited="#hideHoverText" onMouseMoved="#moveHoverText" text="Gen Random Polygons" />
                         <Button layoutX="41.0" layoutY="292.0" mnemonicParsing="false" onAction="#clearCanvas" text="Clear Canvas" />
-                        <Button layoutX="22.0" layoutY="358.0" mnemonicParsing="false" onAction="#exportToFile" text="Export From File" />
-                        <Button layoutX="21.0" layoutY="326.0" mnemonicParsing="false" onAction="#importFromFile" text="Import From File" />
+                        <Button layoutX="22.0" layoutY="358.0" mnemonicParsing="false" onAction="#exportToFile" text="Export" />
+                        <Button layoutX="21.0" layoutY="326.0" mnemonicParsing="false" onAction="#importFromFile" text="Import" />
                   <ToggleButton fx:id="drawToggle" layoutX="51.0" layoutY="50.0" mnemonicParsing="false" text="Draw" />
                     </children>
                 </AnchorPane>
