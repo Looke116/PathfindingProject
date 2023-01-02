@@ -2,6 +2,8 @@ package application;
 
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.input.MouseButton;
@@ -37,6 +39,9 @@ public class MainViewController {
     public final int SHAPE_SIZE = 100;
     private final Random random = new Random();
     private final List<Point2D> pointList = new ArrayList<>();
+    List<PolygonCustom> polygonListGlobal = new ArrayList<>();
+    PointsCustom pointGlobal = new PointsCustom();
+    //Group g =new Group();
 
     private void draw(Node node) {
         canvas.getChildren().add(node);
@@ -55,23 +60,20 @@ public class MainViewController {
         canvas.getChildren().clear();
     }
 
-    @FXML
     protected void genRandomPolygons() {
-        clearCanvas();
         double maxX = canvas.getHeight();
         double maxY = canvas.getWidth();
-        List<Polygon> polygonList = new ArrayList<>();
+        List<PolygonCustom> polygonList = new ArrayList<>();
 
         int PolygonTotal = random.nextInt(MIN_POLYGON_NUMBER, MAX_POLYGON_NUMBER);
         for (int i = 0; i < PolygonTotal; i++) {
-            boolean isIntersected;
-            Polygon polygon;
+
+            Point2D[] points;
+
             do {
-                polygon = new Polygon();
-                isIntersected = false;
+                //polygon = new PolygonCustom();
                 int verticesNumber = random.nextInt(MIN_VERTICES, MAX_VERTICES);
-                Point2D[] points = pointList.toArray(new Point2D[verticesNumber]);
-                boolean PointInPolygon = false;
+                points = pointList.toArray(new Point2D[verticesNumber]);
                 Point2D centerPoint;
 
                 do {
@@ -79,8 +81,7 @@ public class MainViewController {
                             random.nextDouble(SHAPE_SIZE, maxX - SHAPE_SIZE),
                             random.nextDouble(SHAPE_SIZE, maxY - SHAPE_SIZE)
                     );
-                    PointInPolygon = polygon.contains(centerPoint);
-                } while (PointInPolygon);
+                } while (inAnyPolygon(polygonList, centerPoint));
 
                 for (int j = 0; j < verticesNumber; j++) {
                     points[j] = new Point2D(
@@ -89,29 +90,51 @@ public class MainViewController {
                 }
                 sortPointsClockwise(points, centerPoint);
 
-                for (Point2D point : points) {
-                    polygon.getPoints().add(point.getX());
-                    polygon.getPoints().add(point.getY());
-                }
+            } while (overAnyPolygon(polygonList, new PolygonCustom(points)));
 
-                for (Polygon p : polygonList) {
-                    if (p.getBoundsInParent().intersects(polygon.getBoundsInParent())) {
-                        isIntersected = true;
-                        break;
-                    }
-                }
-            } while (isIntersected);
-
+            PolygonCustom polygon = new PolygonCustom(points);
             setRandomColor(polygon);
             polygonList.add(polygon);
-
         }
 
-        for (Polygon polygon : polygonList) {
-            draw(polygon);
-        }
+        polygonListGlobal = polygonList;
+        //g.getChildren().addAll(polygonListGlobal);
     }
 
+    protected void genRandomPoints(){
+        double maxX = canvas.getHeight();
+        double maxY = canvas.getWidth();
+        PointsCustom point = new PointsCustom();
+
+        do{
+            point.startPoint = new Point2D(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
+        } while (inAnyPolygon(polygonListGlobal,point.startPoint));
+        pointGlobal.startPoint = point.startPoint;
+
+        do{
+            point.finishPoint = new Point2D(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
+        } while (inAnyPolygon(polygonListGlobal,point.finishPoint));
+        pointGlobal.finishPoint = point.finishPoint;
+    }
+
+    @FXML
+    protected void createRandomExample(){
+        clearCanvas();
+        genRandomPolygons();
+        for (Polygon polygon : polygonListGlobal) {
+            draw(polygon);
+        }
+        //draw(g);
+        genRandomPoints();
+        draw(new Circle(pointGlobal.startPoint.getX(),pointGlobal.startPoint.getY(),2));
+        draw(new Circle(pointGlobal.finishPoint.getX(),pointGlobal.finishPoint.getY(),2));
+        //draw(new Line(pointGlobal.startPoint.getX(),pointGlobal.startPoint.getY(),pointGlobal.finishPoint.getX(),pointGlobal.finishPoint.getY()));
+        for(Point2D p : VisibleVertices(pointGlobal.startPoint)){
+            draw(new Circle(p.getX(),p.getY(),2));
+            draw(new LineCustom(pointGlobal.startPoint,p));
+        }
+//        System.out.println(VisibleVertices(pointGlobal.startPoint));
+    }
     private static void sortPointsClockwise(Point2D[] points, Point2D center) {
         boolean changed;
         do {
@@ -395,4 +418,51 @@ public class MainViewController {
         }
         return output;
     }
+
+    public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2D pt){
+        for (PolygonCustom p : plgList) {
+            if (p.contains(pt)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean overAnyPolygon(List<PolygonCustom> plgList, Node shape){
+        for (PolygonCustom p : plgList) {
+            if (p.intersects(shape.getBoundsInParent())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean Visible(Point2D p1,Point2D p2, List<PolygonCustom> plgList){
+
+        LineCustom line = new LineCustom(p1,p2);
+        int count = 0;
+
+        for (Polygon polygon : plgList) {
+            if (polygon.getBoundsInParent().intersects(line.getBoundsInParent())) {
+
+                count++;
+            }
+        }
+
+        return count <= 1;
+    }
+
+    public ArrayList<Point2D> VisibleVertices(Point2D p){
+        ArrayList<Point2D> result = new ArrayList<Point2D>();
+        for(PolygonCustom pol : polygonListGlobal){
+            for(Point2D vert : pol.PointsList){
+                //System.out.println(Visible(p,vert,polygonListGlobal));
+                if( (Visible(p,vert,polygonListGlobal)) && (p!=vert) ){
+                    result.add(vert);
+                }
+            }
+        }
+        return result;
+    }
+
 }
