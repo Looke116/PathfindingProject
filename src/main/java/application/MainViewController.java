@@ -437,19 +437,63 @@ public class MainViewController {
         return false;
     }
 
-    public boolean Visible(Point2D p1,Point2D p2, List<PolygonCustom> plgList){
+    boolean polyLine(Point2D[] vertices, LineCustom line) {
 
-        LineCustom line = new LineCustom(p1,p2);
+        float x1 = (float)line.getStartX();
+        float y1 = (float)line.getStartY();
+        float x2 = (float)line.getEndX();
+        float y2 = (float)line.getEndY();
+        // go through each of the vertices, plus the next
+        // vertex in the list
+        int next = 0;
         int count = 0;
+        for (int current=0; current<vertices.length; current++) {
 
-        for (Polygon polygon : plgList) {
-            if (polygon.getBoundsInParent().intersects(line.getBoundsInParent())) {
+            // get next vertex in list
+            // if we've hit the end, wrap around to 0
+            next = current+1;
+            if (next == vertices.length) next = 0;
 
+            // get the PVectors at our current position
+            // extract X/Y coordinates from each
+            float x3 = (float)vertices[current].getX();
+            float y3 = (float)vertices[current].getY();
+            float x4 = (float)vertices[next].getX();
+            float y4 = (float)vertices[next].getY();
+
+            // do a Line/Line comparison
+            // if true, return 'true' immediately and
+            // stop testing (faster)
+            boolean hit = lineLine(x1, y1, x2, y2, x3, y3, x4, y4);
+            if (hit) {
                 count++;
             }
         }
 
-        return count <= 1;
+        // never got a hit
+        if (count>1){return true;} else{return false;}
+
+    }
+
+    boolean lineLine(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4) {
+
+        // calculate the direction of the lines
+        float uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+        float uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+
+        // if uA and uB are between 0-1, lines are colliding
+        return uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1;
+    }
+
+    public boolean Visible(Point2D p1,Point2D p2, List<PolygonCustom> plgList){
+        LineCustom line = new LineCustom(p1,p2);
+        int count = 0;
+        for (PolygonCustom polygon : plgList) {
+            if (polyLine(polygon.getPointsList(),line)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public ArrayList<Point2D> VisibleVertices(Point2D p){

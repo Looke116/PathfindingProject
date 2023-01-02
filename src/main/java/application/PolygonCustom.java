@@ -14,4 +14,7 @@ public class PolygonCustom extends javafx.scene.shape.Polygon {
         }
         PointsList = points;
     }
+    public Point2D[] getPointsList() {
+        return PointsList;
+    }
 }
