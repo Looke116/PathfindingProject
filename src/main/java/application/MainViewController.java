@@ -1,9 +1,6 @@
 package application;
 
 import javafx.fxml.FXML;
-import javafx.geometry.Point2D;
-import javafx.geometry.Rectangle2D;
-import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.input.MouseButton;
@@ -19,11 +16,9 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import org.jgrapht.util.AVLTree;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class MainViewController {
 
@@ -32,16 +27,18 @@ public class MainViewController {
     @FXML
     private ToggleButton drawToggle;
 
-    public final int MIN_POLYGON_NUMBER = 3;
-    public final int MAX_POLYGON_NUMBER = 10;
+    public final int MIN_POLYGON_NUMBER = 2;
+    public final int MAX_POLYGON_NUMBER = 4;
     public final int MIN_VERTICES = 3;
-    public final int MAX_VERTICES = 15;
+    public final int MAX_VERTICES = 6;
     public final int SHAPE_SIZE = 100;
     private final Random random = new Random();
-    private final List<Point2D> pointList = new ArrayList<>();
-    List<PolygonCustom> polygonListGlobal = new ArrayList<>();
-    PointsCustom pointGlobal = new PointsCustom();
-    //Group g =new Group();
+    private final List<Point2DCustom> pointList = new ArrayList<>();
+    private final List<Point2DCustom> allPoints = new ArrayList<>();
+    private List<PolygonCustom> polygonListGlobal = new ArrayList<>();
+    private Point2DCustom startPoint;
+    private Point2DCustom endPoint;
+    private AVLTree<Double> avl;
 
     private void draw(Node node) {
         canvas.getChildren().add(node);
@@ -68,80 +65,85 @@ public class MainViewController {
         int PolygonTotal = random.nextInt(MIN_POLYGON_NUMBER, MAX_POLYGON_NUMBER);
         for (int i = 0; i < PolygonTotal; i++) {
 
-            Point2D[] points;
+            Point2DCustom[] points;
 
             do {
                 //polygon = new PolygonCustom();
                 int verticesNumber = random.nextInt(MIN_VERTICES, MAX_VERTICES);
-                points = pointList.toArray(new Point2D[verticesNumber]);
-                Point2D centerPoint;
+                points = pointList.toArray(new Point2DCustom[verticesNumber]);
+                Point2DCustom centerPoint;
 
                 do {
-                    centerPoint = new Point2D(
+                    centerPoint = new Point2DCustom(
                             random.nextDouble(SHAPE_SIZE, maxX - SHAPE_SIZE),
                             random.nextDouble(SHAPE_SIZE, maxY - SHAPE_SIZE)
                     );
                 } while (inAnyPolygon(polygonList, centerPoint));
 
                 for (int j = 0; j < verticesNumber; j++) {
-                    points[j] = new Point2D(
+                    points[j] = new Point2DCustom(
                             random.nextDouble(centerPoint.getX() - SHAPE_SIZE, centerPoint.getX() + SHAPE_SIZE),
                             random.nextDouble(centerPoint.getY() - SHAPE_SIZE, centerPoint.getY() + SHAPE_SIZE));
                 }
                 sortPointsClockwise(points, centerPoint);
 
-            } while (overAnyPolygon(polygonList, new PolygonCustom(points)));
+            } while (intersectsAnyPolygon(polygonList, new PolygonCustom(points)));
 
             PolygonCustom polygon = new PolygonCustom(points);
+            allPoints.addAll(List.of(polygon.PointsList));
             setRandomColor(polygon);
             polygonList.add(polygon);
         }
 
         polygonListGlobal = polygonList;
-        //g.getChildren().addAll(polygonListGlobal);
+
     }
 
     protected void genRandomPoints(){
         double maxX = canvas.getHeight();
         double maxY = canvas.getWidth();
-        PointsCustom point = new PointsCustom();
 
         do{
-            point.startPoint = new Point2D(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
-        } while (inAnyPolygon(polygonListGlobal,point.startPoint));
-        pointGlobal.startPoint = point.startPoint;
+            startPoint = new Point2DCustom(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
+        } while (inAnyPolygon(polygonListGlobal,startPoint));
 
         do{
-            point.finishPoint = new Point2D(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
-        } while (inAnyPolygon(polygonListGlobal,point.finishPoint));
-        pointGlobal.finishPoint = point.finishPoint;
+            endPoint = new Point2DCustom(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
+        } while (inAnyPolygon(polygonListGlobal,endPoint));
+
+        allPoints.add(startPoint);
+        allPoints.add(endPoint);
     }
 
     @FXML
     protected void createRandomExample(){
+        allPoints.clear();
         clearCanvas();
         genRandomPolygons();
         for (Polygon polygon : polygonListGlobal) {
             draw(polygon);
         }
-        //draw(g);
+
         genRandomPoints();
-        draw(new Circle(pointGlobal.startPoint.getX(),pointGlobal.startPoint.getY(),2));
-        draw(new Circle(pointGlobal.finishPoint.getX(),pointGlobal.finishPoint.getY(),2));
-        //draw(new Line(pointGlobal.startPoint.getX(),pointGlobal.startPoint.getY(),pointGlobal.finishPoint.getX(),pointGlobal.finishPoint.getY()));
-        for(Point2D p : VisibleVertices(pointGlobal.startPoint)){
-            draw(new Circle(p.getX(),p.getY(),2));
-            draw(new LineCustom(pointGlobal.startPoint,p));
+
+        for(Point2DCustom p : allPoints){
+            for(Point2DCustom p1 : VisibleVertices(p)){
+                draw(new Circle(p.getX(),p.getY(),1));
+                draw(new LineCustom(p,p1));
+            }
         }
-//        System.out.println(VisibleVertices(pointGlobal.startPoint));
+        draw(new Circle(startPoint.getX(),startPoint.getY(),3,Color.RED));
+        draw(new Circle(endPoint.getX(),endPoint.getY(),3,Color.BLUE));
+        //calculateVisibilityGraph();
+
     }
-    private static void sortPointsClockwise(Point2D[] points, Point2D center) {
+    private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
         boolean changed;
         do {
             changed = false;
             for (int i = 0; i < points.length - 1; i++) {
                 if (comparePoint(points[i + 1], points[i], center)) {
-                    Point2D temp = points[i];
+                    Point2DCustom temp = points[i];
                     points[i] = points[i + 1];
                     points[i + 1] = temp;
                     changed = true;
@@ -150,7 +152,7 @@ public class MainViewController {
         } while (changed);
     }
 
-    private static boolean comparePoint(Point2D a, Point2D b, Point2D center) {
+    private static boolean comparePoint(Point2DCustom a, Point2DCustom b, Point2DCustom center) {
 
         if (a.getX() - center.getX() >= 0 && b.getX() - center.getX() < 0) {
             return true;
@@ -195,12 +197,12 @@ public class MainViewController {
             return;
         }
 
-        Point2D currentPoint = new Point2D(event.getX(), event.getY());
+        Point2DCustom currentPoint = new Point2DCustom(event.getX(), event.getY());
         pointList.add(currentPoint);
 
         if (pointList.size() > 3) {
-            Point2D firstPoint = pointList.get(0);
-            Point2D lastPoint = pointList.get(pointList.size() - 1);
+            Point2DCustom firstPoint = pointList.get(0);
+            Point2DCustom lastPoint = pointList.get(pointList.size() - 1);
 
             // Check if the last point is within 10 pixels from the first point to finish the polygon
             if (lastPoint.getX() > firstPoint.getX() - 10 && lastPoint.getX() < firstPoint.getX() + 10) {
@@ -217,7 +219,7 @@ public class MainViewController {
         draw(circle);
 
         if (pointList.size() <= 1) return;
-        Point2D previousPoint = pointList.get(pointList.size() - 2);
+        Point2DCustom previousPoint = pointList.get(pointList.size() - 2);
         Line line = new Line(
                 currentPoint.getX(),
                 currentPoint.getY(),
@@ -419,7 +421,7 @@ public class MainViewController {
         return output;
     }
 
-    public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2D pt){
+    public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt){
         for (PolygonCustom p : plgList) {
             if (p.contains(pt)){
                 return true;
@@ -428,7 +430,7 @@ public class MainViewController {
         return false;
     }
 
-    public boolean overAnyPolygon(List<PolygonCustom> plgList, Node shape){
+    public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape){
         for (PolygonCustom p : plgList) {
             if (p.intersects(shape.getBoundsInParent())) {
                 return true;
@@ -437,19 +439,18 @@ public class MainViewController {
         return false;
     }
 
-    boolean polyLine(List<PolygonCustom> polygons, LineCustom line) {
-
-        float x1 = (float)line.getStartX();
-        float y1 = (float)line.getStartY();
-        float x2 = (float)line.getEndX();
-        float y2 = (float)line.getEndY();
+    boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
+        double x1 = line.getStartX();
+        double y1 = line.getStartY();
+        double x2 = line.getEndX();
+        double y2 = line.getEndY();
         // go through each of the vertices, plus the next
         // vertex in the list
         int next = 0;
-        int count = 0;
-        for(PolygonCustom pol : polygons) {
-            Point2D[] vertices = pol.getPointsList();
 
+
+        for(PolygonCustom pol : polygons) {
+            Point2DCustom[] vertices = pol.getPointsList();
             for (int current = 0; current < vertices.length; current++) {
 
                 // get next vertex in list
@@ -459,56 +460,85 @@ public class MainViewController {
 
                 // get the PVectors at our current position
                 // extract X/Y coordinates from each
-                float x3 = (float) vertices[current].getX();
-                float y3 = (float) vertices[current].getY();
-                float x4 = (float) vertices[next].getX();
-                float y4 = (float) vertices[next].getY();
+                double x3 = vertices[current].getX();
+                double y3 = vertices[current].getY();
+                double x4 = vertices[next].getX();
+                double y4 = vertices[next].getY();
 
                 // do a Line/Line comparison
                 // if true, return 'true' immediately and
                 // stop testing (faster)
                 boolean hit = lineLine(x1, y1, x2, y2, x3, y3, x4, y4);
                 if (hit) {
-                    count++;
+                    return false;
                 }
             }
         }
-        // never got a hit
-        System.out.println(count);
-        if (count ==1){return false;}else{return true;}
-
+        //System.out.println(euclideanDistance(line.getStartPoint(),line.getEndPoint()));
+        return true;
     }
 
-    boolean lineLine(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4) {
+    boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
 
-        float denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
-        float numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
-        float numerator2 = ((y1 - y3) * (x2 - x1)) - ((x1 - x3) * (y2 - y1));
+        double denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
+        double numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
+        double numerator2 = ((y1 - y3) * (x2 - x1)) - ((x1 - x3) * (y2 - y1));
 
         if (denominator == 0) return numerator1 == 0 && numerator2 == 0;
 
-        float r = numerator1 / denominator;
-        float s = numerator2 / denominator;
-
-        return (r >= 0 && r <= 1) && (s >= 0 && s <= 1);
+        double r = numerator1 / denominator;
+        double s = numerator2 / denominator;
+        r = Math.round(r*10000.0)/10000.0;
+        s = Math.round(s*10000.0)/10000.0;
+        return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
     }
 
-    public boolean Visible(Point2D p1,Point2D p2, List<PolygonCustom> plgList){
-        LineCustom line = new LineCustom(p1,p2);
-        return !polyLine(plgList,line);
-    }
-
-    public ArrayList<Point2D> VisibleVertices(Point2D p){
-        ArrayList<Point2D> result = new ArrayList<Point2D>();
+    public ArrayList<Point2DCustom> VisibleVertices(Point2DCustom p){
+        ArrayList<Point2DCustom> result = new ArrayList<Point2DCustom>();
         for(PolygonCustom pol : polygonListGlobal){
-            for(Point2D vert : pol.PointsList){
-                //System.out.println(Visible(p,vert,polygonListGlobal));
-                if( (Visible(p,vert,polygonListGlobal)) && (p!=vert) ){
+            for(Point2DCustom vert : pol.PointsList){
+
+                if(
+                        (p!=vert) &&
+                        (!((new ArrayList<>(Arrays.asList(pol.PointsList)).contains(p)) &&
+                        (new ArrayList<>(Arrays.asList(pol.PointsList)).contains(vert)))) &&
+                        (Visible(polygonListGlobal,new LineCustom(p,vert)))
+                ){
                     result.add(vert);
+                } else if (new ArrayList<>(Arrays.asList(pol.PointsList)).contains(p)) {
+                    result.add(pol.leftNeighbour(p));
+                    result.add(pol.rightNeighbour(p));
                 }
             }
         }
+        if ((p==startPoint) && (Visible(polygonListGlobal,new LineCustom(p,endPoint)))){
+            result.add(endPoint);
+        } else if ((p==endPoint) && (Visible(polygonListGlobal,new LineCustom(p,startPoint)))) {
+            result.add(startPoint);
+        }
         return result;
     }
+
+    public double euclideanDistance(Point2DCustom p1, Point2DCustom p2){
+        double xDiff = p1.getX() - p2.getX();
+        double yDiff = p1.getY() - p2.getY();
+
+        return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+    }
+
+    public Graph calculateVisibilityGraph() {
+        Graph graph = new Graph(allPoints.size());
+        for (Point2DCustom vertex : allPoints) {
+            ArrayList<Point2DCustom> visibleFromVertex = VisibleVertices(vertex);
+            for (Point2DCustom visibleVertex : visibleFromVertex) {
+                if (vertex != visibleVertex) {
+                    Hashtable<Point2DCustom, Double> edgeToAdd = new Hashtable<Point2DCustom, Double>();
+                    edgeToAdd.put(visibleVertex,0.0);
+                    graph.addEdge(vertex, edgeToAdd);
+                    }
+                }
+            }
+        return graph;
+        }
 
 }

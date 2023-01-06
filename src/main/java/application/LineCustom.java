@@ -1,14 +1,19 @@
 package application;
-
-import javafx.geometry.Point2D;
-
 import java.util.List;
 
 public class LineCustom extends javafx.scene.shape.Line {
-    public LineCustom(Point2D startPoint,Point2D finishPoint) {
-        this.setStartX(startPoint.getX());
-        this.setStartY(startPoint.getY());
-        this.setEndX(finishPoint.getX());
-        this.setEndY(finishPoint.getY());
+
+    public LineCustom(Point2DCustom vertexA, Point2DCustom vertexB) {
+        this.setStartX(vertexA.getX());
+        this.setStartY(vertexA.getY());
+        this.setEndX(vertexB.getX());
+        this.setEndY(vertexB.getY());
+    }
+
+    public Point2DCustom getStartPoint(){
+        return new Point2DCustom(this.getStartX(),this.getStartY());
+    }
+    public Point2DCustom getEndPoint(){
+        return new Point2DCustom(this.getEndX(),this.getEndY());
     }
 }

@@ -11,6 +11,7 @@ module application {
     requires javafx.controls;
     requires javafx.fxml;
     requires org.json;
+    requires org.jgrapht.core;
 
     opens application to javafx.fxml;
     exports application;
