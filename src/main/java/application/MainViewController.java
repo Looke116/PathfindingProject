@@ -2,6 +2,7 @@ package application;
 
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -20,17 +21,19 @@ import org.jgrapht.util.AVLTree;
 import java.io.*;
 import java.util.*;
 
-public class MainViewController {
+public class MainViewController implements RandomCreate,Collision {
 
     @FXML
     private AnchorPane canvas;
     @FXML
     private ToggleButton drawToggle;
+    @FXML
+    private TextField MAX_POLYGON_NUMBER;
 
-    public final int MIN_POLYGON_NUMBER = 2;
-    public final int MAX_POLYGON_NUMBER = 4;
-    public final int MIN_VERTICES = 3;
-    public final int MAX_VERTICES = 6;
+    public int MIN_POLYGON_NUMBER = 2;
+    //public int MAX_POLYGON_NUMBER = 20;
+    public final int MIN_VERTICES = 5;
+    public final int MAX_VERTICES = 12;
     public final int SHAPE_SIZE = 100;
     private final Random random = new Random();
     private final List<Point2DCustom> pointList = new ArrayList<>();
@@ -39,12 +42,14 @@ public class MainViewController {
     private Point2DCustom startPoint;
     private Point2DCustom endPoint;
     private AVLTree<Double> avl;
+    private Graph graph;
 
     private void draw(Node node) {
         canvas.getChildren().add(node);
     }
 
-    private void setRandomColor(Shape shape) {
+    @Override
+    public void setRandomColor(Shape shape) {
         shape.setFill(new Color(
                 random.nextDouble(0, 1),
                 random.nextDouble(0, 1),
@@ -57,12 +62,13 @@ public class MainViewController {
         canvas.getChildren().clear();
     }
 
-    protected void genRandomPolygons() {
-        double maxX = canvas.getHeight();
-        double maxY = canvas.getWidth();
-        List<PolygonCustom> polygonList = new ArrayList<>();
+    @Override
+    public void genRandomPolygons() {
+        double maxX = canvas.getWidth();
+        double maxY = canvas.getHeight();
 
-        int PolygonTotal = random.nextInt(MIN_POLYGON_NUMBER, MAX_POLYGON_NUMBER);
+        List<PolygonCustom> polygonList = new ArrayList<>();
+        int PolygonTotal = random.nextInt(MIN_POLYGON_NUMBER, Integer.parseInt(MAX_POLYGON_NUMBER.getText())+1);
         for (int i = 0; i < PolygonTotal; i++) {
 
             Point2DCustom[] points;
@@ -99,16 +105,17 @@ public class MainViewController {
 
     }
 
-    protected void genRandomPoints(){
-        double maxX = canvas.getHeight();
-        double maxY = canvas.getWidth();
+    @Override
+    public void genRandomPoints(){
+        double maxX = canvas.getWidth();
+        double maxY = canvas.getHeight();
 
         do{
-            startPoint = new Point2DCustom(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
+            startPoint = new Point2DCustom(random.nextDouble(0, maxX), random.nextDouble(0, maxY));
         } while (inAnyPolygon(polygonListGlobal,startPoint));
 
         do{
-            endPoint = new Point2DCustom(random.nextDouble(10, maxX-10), random.nextDouble(10, maxY-10));
+            endPoint = new Point2DCustom(random.nextDouble(0, maxX), random.nextDouble(0, maxY));
         } while (inAnyPolygon(polygonListGlobal,endPoint));
 
         allPoints.add(startPoint);
@@ -116,7 +123,7 @@ public class MainViewController {
     }
 
     @FXML
-    protected void createRandomExample(){
+    protected void createRandomExample() {
         allPoints.clear();
         clearCanvas();
         genRandomPolygons();
@@ -127,14 +134,22 @@ public class MainViewController {
         genRandomPoints();
 
         for(Point2DCustom p : allPoints){
+
             for(Point2DCustom p1 : VisibleVertices(p)){
+
                 draw(new Circle(p.getX(),p.getY(),1));
-                draw(new LineCustom(p,p1));
+                LineCustom l = new LineCustom(p,p1);
+                l.setFill(Color.rgb(0,0,0,0.1));
+                draw(l);
             }
+
         }
         draw(new Circle(startPoint.getX(),startPoint.getY(),3,Color.RED));
         draw(new Circle(endPoint.getX(),endPoint.getY(),3,Color.BLUE));
-        //calculateVisibilityGraph();
+
+        calculateVisibilityGraph();
+        calculateEuclidieanDistances();
+        //System.out.println(graph.toString());
 
     }
     private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
@@ -421,6 +436,7 @@ public class MainViewController {
         return output;
     }
 
+    @Override
     public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt){
         for (PolygonCustom p : plgList) {
             if (p.contains(pt)){
@@ -430,6 +446,7 @@ public class MainViewController {
         return false;
     }
 
+    @Override
     public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape){
         for (PolygonCustom p : plgList) {
             if (p.intersects(shape.getBoundsInParent())) {
@@ -439,7 +456,8 @@ public class MainViewController {
         return false;
     }
 
-    boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
+    @Override
+    public boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
         double x1 = line.getStartX();
         double y1 = line.getStartY();
         double x2 = line.getEndX();
@@ -478,7 +496,7 @@ public class MainViewController {
         return true;
     }
 
-    boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
+    public boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
 
         double denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
         double numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
@@ -493,6 +511,7 @@ public class MainViewController {
         return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
     }
 
+    @Override
     public ArrayList<Point2DCustom> VisibleVertices(Point2DCustom p){
         ArrayList<Point2DCustom> result = new ArrayList<Point2DCustom>();
         for(PolygonCustom pol : polygonListGlobal){
@@ -525,20 +544,32 @@ public class MainViewController {
 
         return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
     }
+    @Override
+    public void calculateVisibilityGraph() {
+        graph = new Graph(allPoints.size());
 
-    public Graph calculateVisibilityGraph() {
-        Graph graph = new Graph(allPoints.size());
         for (Point2DCustom vertex : allPoints) {
+
             ArrayList<Point2DCustom> visibleFromVertex = VisibleVertices(vertex);
+            ArrayList<VisibleVertex> edges = new ArrayList<VisibleVertex>();
+
             for (Point2DCustom visibleVertex : visibleFromVertex) {
-                if (vertex != visibleVertex) {
-                    Hashtable<Point2DCustom, Double> edgeToAdd = new Hashtable<Point2DCustom, Double>();
-                    edgeToAdd.put(visibleVertex,0.0);
-                    graph.addEdge(vertex, edgeToAdd);
-                    }
+                graph.addEdge(vertex,new VisibleVertex(visibleVertex,0.0));
                 }
             }
-        return graph;
-        }
 
+        //calculateEuclidieanDistances();
+
+    }
+
+    public void calculateEuclidieanDistances(){
+        for (Point2DCustom vertex : allPoints) {
+            ArrayList<VisibleVertex> edgeList = graph.AdjList.get(vertex);
+            for (VisibleVertex edge : edgeList) {
+
+                edge.distance = euclideanDistance(vertex, edge.vertex);
+                //System.out.println(vertex + " - " + edge.vertex + ": " +edge.distance);
+            }
+        }
+    }
 }

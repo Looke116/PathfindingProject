@@ -6,14 +6,22 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import java.io.IOException;
 
 public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("main-view.fxml"));
+        Scene scene = null;
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("main-view.fxml"));
+            scene = new Scene(fxmlLoader.load());
+        } catch (IOException e) {
+            System.out.println("Error loading FXML file: " + e.getMessage());
+        }
+
         String css = String.valueOf(Main.class.getResource("something.css"));
-        Scene scene = new Scene(fxmlLoader.load());
+
         scene.getStylesheets().add(css);
 
         // Adjust for Windows scale
@@ -23,10 +31,17 @@ public class Main extends Application {
         double scaleY = screen.getOutputScaleY();
 
 
-        Image icon = new Image(String.valueOf(Main.class.getResource("icon.png")));
-        stage.getIcons().add(icon);
+        Image icon = new Image(String.valueOf(Main.class.getResource("cg512x512.jpg")));
+
+        try {
+            stage.getIcons().add(icon);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error adding icon to stage: " + e.getMessage());
+        }
 
         stage.setTitle("Pathfinding");
+
+
         stage.setScene(scene);
         stage.show();
     }
