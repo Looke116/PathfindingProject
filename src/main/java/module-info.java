@@ -11,7 +11,6 @@ module application {
     requires javafx.controls;
     requires javafx.fxml;
     requires org.json;
-    requires org.junit.jupiter.api;
     requires org.jgrapht.core;
 
     opens application to javafx.fxml;

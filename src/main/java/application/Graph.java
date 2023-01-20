@@ -22,4 +22,11 @@ public class Graph {
         }
     }
 
+    @Override
+    public String toString() {
+        return "Graph{" +
+                "noOfVertices=" + noOfVertices +
+                ", AdjList=" + AdjList +
+                '}';
+    }
 }

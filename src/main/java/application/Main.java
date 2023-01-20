@@ -7,6 +7,7 @@ import javafx.scene.image.Image;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Main extends Application {
 
@@ -30,7 +31,6 @@ public class Main extends Application {
         double scaleX = screen.getOutputScaleX();
         double scaleY = screen.getOutputScaleY();
 
-
         Image icon = new Image(String.valueOf(Main.class.getResource("cg512x512.jpg")));
 
         try {
@@ -39,14 +39,30 @@ public class Main extends Application {
             System.out.println("Error adding icon to stage: " + e.getMessage());
         }
 
+        stage.setMinHeight(250);
+        stage.setMinWidth(570);
         stage.setTitle("Pathfinding");
-
-
         stage.setScene(scene);
         stage.show();
     }
 
+
+
     public static void main(String[] args) {
         launch(args);
+        if (Arrays.asList(args).contains("printGraph")/*Objects.equals(args[0], "printGraph")*/){
+            System.out.println("Graph:\n");
+            System.out.println(MainViewController.graph.toString());
+            System.out.println();
+        }
+
+        if (Arrays.asList(args).contains("printPoints")/*Objects.equals(args[0], "printGraph")*/){
+            System.out.println("Points:\n");
+            for (Point2DCustom p : MainViewController.allPoints){
+                System.out.println(p);
+            }
+            System.out.println();
+        }
+
     }
 }
