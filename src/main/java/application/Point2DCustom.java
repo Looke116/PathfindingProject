@@ -5,4 +5,5 @@ public boolean visited = false;
     public Point2DCustom(double v, double v1) {
         super(v, v1);
     }
+
 }

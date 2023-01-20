@@ -1,9 +1,15 @@
 package application;
 
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.*;
+import javafx.scene.image.PixelReader;
+import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
@@ -21,30 +27,35 @@ import org.jgrapht.util.AVLTree;
 import java.io.*;
 import java.util.*;
 
-public class MainViewController implements RandomCreate,Collision {
+public class MainViewController extends Thread implements RandomCreate,Collision  {
 
     @FXML
     private AnchorPane canvas;
     @FXML
     private ToggleButton drawToggle;
     @FXML
-    private TextField MAX_POLYGON_NUMBER;
-
-    public int MIN_POLYGON_NUMBER = 2;
-    //public int MAX_POLYGON_NUMBER = 20;
+    private TextField POLYGON_NUMBER;
+    @FXML
+    private Slider SHAPE_SIZE;
+    @FXML
+    private Label warningText;
+    @FXML
+    private AnchorPane warningPane;
     public final int MIN_VERTICES = 5;
     public final int MAX_VERTICES = 12;
-    public final int SHAPE_SIZE = 100;
+
+
+    private final Stage warningStage = new Stage();
     private final Random random = new Random();
     private final List<Point2DCustom> pointList = new ArrayList<>();
-    private final List<Point2DCustom> allPoints = new ArrayList<>();
-    private List<PolygonCustom> polygonListGlobal = new ArrayList<>();
-    private Point2DCustom startPoint;
-    private Point2DCustom endPoint;
+    protected static final List<Point2DCustom> allPoints = new ArrayList<>();
+    protected List<PolygonCustom> polygonListGlobal = new ArrayList<>();
+    protected Point2DCustom startPoint;
+    protected Point2DCustom endPoint;
     private AVLTree<Double> avl;
-    private Graph graph;
+    static Graph graph;
 
-    private void draw(Node node) {
+    protected void draw(Node node) {
         canvas.getChildren().add(node);
     }
 
@@ -58,7 +69,8 @@ public class MainViewController implements RandomCreate,Collision {
     }
 
     @FXML
-    private void clearCanvas() {
+    public void clearCanvas() {
+        //if (checkEmptyCanvas((canvas))
         canvas.getChildren().clear();
     }
 
@@ -66,9 +78,13 @@ public class MainViewController implements RandomCreate,Collision {
     public void genRandomPolygons() {
         double maxX = canvas.getWidth();
         double maxY = canvas.getHeight();
+        int genTriesCount = 0;
+        boolean overLimit = false;
 
         List<PolygonCustom> polygonList = new ArrayList<>();
-        int PolygonTotal = random.nextInt(MIN_POLYGON_NUMBER, Integer.parseInt(MAX_POLYGON_NUMBER.getText())+1);
+        int PolygonTotal = Integer.parseInt(POLYGON_NUMBER.getText());
+
+        outer:
         for (int i = 0; i < PolygonTotal; i++) {
 
             Point2DCustom[] points;
@@ -81,18 +97,25 @@ public class MainViewController implements RandomCreate,Collision {
 
                 do {
                     centerPoint = new Point2DCustom(
-                            random.nextDouble(SHAPE_SIZE, maxX - SHAPE_SIZE),
-                            random.nextDouble(SHAPE_SIZE, maxY - SHAPE_SIZE)
+                            random.nextDouble(SHAPE_SIZE.getValue()+1, maxX - SHAPE_SIZE.getValue()-1),
+                            random.nextDouble(SHAPE_SIZE.getValue()+1, maxY - SHAPE_SIZE.getValue()-1)
                     );
                 } while (inAnyPolygon(polygonList, centerPoint));
 
                 for (int j = 0; j < verticesNumber; j++) {
                     points[j] = new Point2DCustom(
-                            random.nextDouble(centerPoint.getX() - SHAPE_SIZE, centerPoint.getX() + SHAPE_SIZE),
-                            random.nextDouble(centerPoint.getY() - SHAPE_SIZE, centerPoint.getY() + SHAPE_SIZE));
+                            random.nextDouble(centerPoint.getX() - SHAPE_SIZE.getValue(), centerPoint.getX() + SHAPE_SIZE.getValue()),
+                            random.nextDouble(centerPoint.getY() - SHAPE_SIZE.getValue(), centerPoint.getY() + SHAPE_SIZE.getValue()));
                 }
                 sortPointsClockwise(points, centerPoint);
-
+                genTriesCount++;
+                try {
+                    checkPolGen(genTriesCount);
+                } catch (ShapeSizeException e) {
+                    System.out.println(e.getMessage());
+                    ShapeSizeExceptionPopup();
+                    break outer;
+                }
             } while (intersectsAnyPolygon(polygonList, new PolygonCustom(points)));
 
             PolygonCustom polygon = new PolygonCustom(points);
@@ -124,8 +147,8 @@ public class MainViewController implements RandomCreate,Collision {
 
     @FXML
     protected void createRandomExample() {
-        allPoints.clear();
         clearCanvas();
+        allPoints.clear();
         genRandomPolygons();
         for (Polygon polygon : polygonListGlobal) {
             draw(polygon);
@@ -139,7 +162,7 @@ public class MainViewController implements RandomCreate,Collision {
 
                 draw(new Circle(p.getX(),p.getY(),1));
                 LineCustom l = new LineCustom(p,p1);
-                l.setFill(Color.rgb(0,0,0,0.1));
+                l.setOpacity(0.2);
                 draw(l);
             }
 
@@ -149,9 +172,12 @@ public class MainViewController implements RandomCreate,Collision {
 
         calculateVisibilityGraph();
         calculateEuclidieanDistances();
-        //System.out.println(graph.toString());
-
     }
+
+    public void run(){
+        createRandomExample();
+    }
+
     private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
         boolean changed;
         do {
@@ -572,4 +598,70 @@ public class MainViewController implements RandomCreate,Collision {
             }
         }
     }
+
+    static class ShapeSizeException extends Exception {
+        public ShapeSizeException(String message) {
+            super("\u001B[31m" + "ShapeSizeException: " + message + "\u001B[0m");
+        }
+    }
+
+    public static void checkPolGen(int tries) throws ShapeSizeException {
+        if (tries >= 200) {
+            throw new ShapeSizeException("Shapes are too many and/or too big. Reduce the shape number and/or size");
+        }
+    }
+
+    public void ShapeSizeExceptionPopup(){
+        Scene scene = null;
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("polygon_limit.fxml"));
+            scene = new Scene(fxmlLoader.load());
+        } catch (IOException e) {
+            System.out.println("Error loading FXML file: " + e.getMessage());
+        }
+
+        //warningText = new Label("Shapes are too many and/or too big. Reduce the shape number and/or size");
+        //warningText.setText("Shapes are too many and/or too big. Reduce the shape number and/or size");
+
+        warningStage.setResizable(false);
+        warningStage.setTitle("Warning");
+        warningStage.setScene(scene);
+
+        warningStage.show();
+
+    }
+
+    @FXML
+    private void terminateWarningWindow(ActionEvent event){
+        Stage stage = (Stage) warningPane.getScene().getWindow();
+        stage.close();
+    }
+    static class EmptyCanvasExceprion extends Exception {
+        public EmptyCanvasExceprion(String message) {
+            super("\u001B[31m" + "EmptyCanvasException: " + message + "\u001B[0m");
+        }
+    }
+
+    public static void checkEmptyCanvas(Canvas c) throws ShapeSizeException {
+            GraphicsContext gc = c.getGraphicsContext2D();
+            WritableImage image = gc.getCanvas().snapshot(null, null);
+            PixelReader pixelReader = image.getPixelReader();
+
+            for (int y = 0; y < c.getHeight(); y++) {
+                for (int x = 0; x < c.getWidth(); x++) {
+                    if (pixelReader.getArgb(x, y) != 0) {
+                        return;
+                    }
+                }
+            }
+        throw new ShapeSizeException("Shapes are too many and/or too big. Reduce the shape number and/or size");
+    }
+
+
+    static class ExceptionC extends Exception {
+        public ExceptionC(String message) {
+            super(message);
+        }
+    }
+
 }

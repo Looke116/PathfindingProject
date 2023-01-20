@@ -1,3 +1,27 @@
 .sidebar {
-    -fx-background-color: blue;
+    -fx-background-color: #D2F898;
+}
+
+.button {
+     -fx-background-color: #2F2F2F;
+    -fx-border-color: whitesmoke;
+}
+
+.togglebutton {
+    -fx-background-color: #2F2F2F;
+    -fx-border-color: whitesmoke;
+}
+
+.slider .thumb {
+    -fx-background-color:radial-gradient(focus-angle 0.0deg, focus-distance 0.0% , center 50.0% 50.0%, radius 50.0%, white 5.0%, #519E8A 95.0%);
+}
+
+.slider .track {
+    -fx-background-color:#2F2F2F;
+}
+
+.textfield{
+    -fx-background-color: #519E8A;
+    -fx-border-color: whitesmoke;
+    -fx-text-fill:whitesmoke;
 }
