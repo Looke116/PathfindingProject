@@ -21,10 +21,6 @@ public class Main extends Application {
             System.out.println("Error loading FXML file: " + e.getMessage());
         }
 
-        String css = String.valueOf(Main.class.getResource("something.css"));
-
-        scene.getStylesheets().add(css);
-
         // Adjust for Windows scale
         Screen screen = Screen.getPrimary();
         double dpi = screen.getDpi();
@@ -50,6 +46,12 @@ public class Main extends Application {
 
     public static void main(String[] args) {
         launch(args);
+        try {
+            checkArgs(args);
+        } catch(noArgs e) {
+            System.out.println(e.getMessage());
+            return;
+        }
         if (Arrays.asList(args).contains("printGraph")/*Objects.equals(args[0], "printGraph")*/){
             System.out.println("Graph:\n");
             System.out.println(MainViewController.graph.toString());
@@ -65,4 +67,17 @@ public class Main extends Application {
         }
 
     }
+
+    static class noArgs extends Exception {
+        public noArgs(String message) {
+            super("\u001B[31m" + "ArgsException: " + message + "\u001B[0m");
+        }
+    }
+
+    public static void checkArgs(String[] args) throws Main.noArgs {
+        if (args.length==0) {
+            throw new Main.noArgs("No arguments assigned");
+        }
+    }
+
 }
