@@ -11,7 +11,6 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-
 <AnchorPane minHeight="200.0" minWidth="200.0" style="-fx-background-color: black;" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.MainViewController">
    <children>
       <BorderPane minHeight="0.0" minWidth="0.0" stylesheets="@something.css" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
@@ -24,7 +23,7 @@
                         <ToggleButton fx:id="drawToggle" minHeight="0.0" minWidth="0.0" mnemonicParsing="false" styleClass="togglebutton" text="Draw" textAlignment="CENTER" textFill="WHITE" />
                         <TextField fx:id="POLYGON_NUMBER" minHeight="0.0" minWidth="0.0" promptText="max polygons" styleClass="textfield" text="5" />
                         <Slider fx:id="SHAPE_SIZE" blockIncrement="1.0" max="250.0" min="50.0" minHeight="0.0" minWidth="0.0" value="150.0" />
-                              <Button minHeight="0.0" minWidth="0.0" mnemonicParsing="false" onAction="#clearCanvas" stylesheets="@something.css" text="Clear Canvas" textFill="WHITE" />
+                              <Button minHeight="0.0" minWidth="0.0" mnemonicParsing="false" onAction="#clearCanvasEvent" stylesheets="@something.css" text="Clear Canvas" textFill="WHITE" />
                         <HBox alignment="CENTER" minHeight="0.0" minWidth="0.0" spacing="10.0">
                            <children>
                                     <Button minHeight="0.0" minWidth="0.0" mnemonicParsing="false" onAction="#importFromFile" text="Import" textFill="WHITE" />

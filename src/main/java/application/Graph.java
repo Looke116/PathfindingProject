@@ -1,13 +1,29 @@
 package application;
 
 import java.util.*;
-public class Graph {
+
+import static application.MainViewController.allPoints;
+
+public class Graph extends Thread {
     protected int noOfVertices;
     public HashMap<Point2DCustom, ArrayList<VisibleVertex>> AdjList;
 
     public Graph(int noOfVertices) {
         this.noOfVertices = noOfVertices;
         AdjList = new HashMap<Point2DCustom, ArrayList<VisibleVertex>>();
+    }
+
+    @Override
+    public void run() {
+        for (Point2DCustom vertex : allPoints) {
+
+            ArrayList<Point2DCustom> visibleFromVertex = MainViewController.VisibleVertices(vertex);
+            ArrayList<VisibleVertex> edges = new ArrayList<VisibleVertex>();
+
+            for (Point2DCustom visibleVertex : visibleFromVertex) {
+                addEdge(vertex,new VisibleVertex(visibleVertex,0.0));
+            }
+        }
     }
 
     public void addEdge(Point2DCustom src, VisibleVertex dest){

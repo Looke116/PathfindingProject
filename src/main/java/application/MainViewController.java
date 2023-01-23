@@ -5,11 +5,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
-import javafx.scene.image.PixelReader;
-import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
@@ -21,13 +17,13 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Shape;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.jgrapht.util.AVLTree;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jgrapht.util.AVLTree;
 import java.io.*;
 import java.util.*;
 
-public class MainViewController extends Thread implements RandomCreate,Collision  {
+public class MainViewController implements RandomCreate,Collision  {
 
     @FXML
     private AnchorPane canvas;
@@ -48,15 +44,17 @@ public class MainViewController extends Thread implements RandomCreate,Collision
     private final Stage warningStage = new Stage();
     private final Random random = new Random();
     private final List<Point2DCustom> pointList = new ArrayList<>();
-    protected static final List<Point2DCustom> allPoints = new ArrayList<>();
-    protected List<PolygonCustom> polygonListGlobal = new ArrayList<>();
-    protected Point2DCustom startPoint;
-    protected Point2DCustom endPoint;
+    protected static List<Point2DCustom> allPoints = new ArrayList<>();
+    protected static List<PolygonCustom> polygonListGlobal = new ArrayList<>();
+    protected static Point2DCustom startPoint;
+    protected static Point2DCustom endPoint;
     private AVLTree<Double> avl;
     static Graph graph;
+    private static boolean canvasIsEmpty = true;
 
     protected void draw(Node node) {
         canvas.getChildren().add(node);
+        canvasIsEmpty=false;
     }
 
     @Override
@@ -69,8 +67,16 @@ public class MainViewController extends Thread implements RandomCreate,Collision
     }
 
     @FXML
+    public void clearCanvasEvent() {
+
+        try {
+            checkEmpty(canvas);
+        } catch (EmptyCanvasException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
     public void clearCanvas() {
-        //if (checkEmptyCanvas((canvas))
         canvas.getChildren().clear();
     }
 
@@ -97,8 +103,8 @@ public class MainViewController extends Thread implements RandomCreate,Collision
 
                 do {
                     centerPoint = new Point2DCustom(
-                            random.nextDouble(SHAPE_SIZE.getValue()+1, maxX - SHAPE_SIZE.getValue()-1),
-                            random.nextDouble(SHAPE_SIZE.getValue()+1, maxY - SHAPE_SIZE.getValue()-1)
+                            random.nextDouble(SHAPE_SIZE.getValue(), maxX - SHAPE_SIZE.getValue()),
+                            random.nextDouble(SHAPE_SIZE.getValue(), maxY - SHAPE_SIZE.getValue())
                     );
                 } while (inAnyPolygon(polygonList, centerPoint));
 
@@ -170,12 +176,10 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         draw(new Circle(startPoint.getX(),startPoint.getY(),3,Color.RED));
         draw(new Circle(endPoint.getX(),endPoint.getY(),3,Color.BLUE));
 
-        calculateVisibilityGraph();
+        graph = new Graph(allPoints.size());
+        graph.run();
+        //graph.calculateVisibilityGraph();
         calculateEuclidieanDistances();
-    }
-
-    public void run(){
-        createRandomExample();
     }
 
     private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
@@ -461,7 +465,6 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         }
         return output;
     }
-
     @Override
     public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt){
         for (PolygonCustom p : plgList) {
@@ -471,7 +474,6 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         }
         return false;
     }
-
     @Override
     public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape){
         for (PolygonCustom p : plgList) {
@@ -482,8 +484,7 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         return false;
     }
 
-    @Override
-    public boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
+    public static boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
         double x1 = line.getStartX();
         double y1 = line.getStartY();
         double x2 = line.getEndX();
@@ -522,7 +523,7 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         return true;
     }
 
-    public boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
+    public static boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
 
         double denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
         double numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
@@ -537,8 +538,7 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
     }
 
-    @Override
-    public ArrayList<Point2DCustom> VisibleVertices(Point2DCustom p){
+    public static ArrayList<Point2DCustom> VisibleVertices(Point2DCustom p){
         ArrayList<Point2DCustom> result = new ArrayList<Point2DCustom>();
         for(PolygonCustom pol : polygonListGlobal){
             for(Point2DCustom vert : pol.PointsList){
@@ -569,23 +569,6 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         double yDiff = p1.getY() - p2.getY();
 
         return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
-    }
-    @Override
-    public void calculateVisibilityGraph() {
-        graph = new Graph(allPoints.size());
-
-        for (Point2DCustom vertex : allPoints) {
-
-            ArrayList<Point2DCustom> visibleFromVertex = VisibleVertices(vertex);
-            ArrayList<VisibleVertex> edges = new ArrayList<VisibleVertex>();
-
-            for (Point2DCustom visibleVertex : visibleFromVertex) {
-                graph.addEdge(vertex,new VisibleVertex(visibleVertex,0.0));
-                }
-            }
-
-        //calculateEuclidieanDistances();
-
     }
 
     public void calculateEuclidieanDistances(){
@@ -636,32 +619,17 @@ public class MainViewController extends Thread implements RandomCreate,Collision
         Stage stage = (Stage) warningPane.getScene().getWindow();
         stage.close();
     }
-    static class EmptyCanvasExceprion extends Exception {
-        public EmptyCanvasExceprion(String message) {
-            super("\u001B[31m" + "EmptyCanvasException: " + message + "\u001B[0m");
+    static class EmptyCanvasException extends Exception {
+        public EmptyCanvasException(String message) {
+            super("\u001B[31m" + "EmptyCanvasException: "+ message +"\u001B[0m");
         }
     }
-
-    public static void checkEmptyCanvas(Canvas c) throws ShapeSizeException {
-            GraphicsContext gc = c.getGraphicsContext2D();
-            WritableImage image = gc.getCanvas().snapshot(null, null);
-            PixelReader pixelReader = image.getPixelReader();
-
-            for (int y = 0; y < c.getHeight(); y++) {
-                for (int x = 0; x < c.getWidth(); x++) {
-                    if (pixelReader.getArgb(x, y) != 0) {
-                        return;
-                    }
-                }
-            }
-        throw new ShapeSizeException("Shapes are too many and/or too big. Reduce the shape number and/or size");
-    }
-
-
-    static class ExceptionC extends Exception {
-        public ExceptionC(String message) {
-            super(message);
+    public static void checkEmpty(AnchorPane a) throws EmptyCanvasException {
+        if (canvasIsEmpty) {
+            throw new EmptyCanvasException("Canvas Already empty");
+        } else {
+            a.getChildren().clear();
+            canvasIsEmpty=true;
         }
     }
-
 }
