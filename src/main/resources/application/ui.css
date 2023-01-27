@@ -1,0 +1,35 @@
+
+.sidebar {
+    -fx-background-color: #2F2F2F;
+}
+
+.button, .togglebutton{
+     -fx-background-color: #505050;
+}
+
+.button:hover, .togglebutton:hover, .buttonOk:hover {
+    -fx-background-color: #606060;
+}
+
+.slider .thumb {
+    -fx-background-color:radial-gradient(focus-angle 0.0deg, focus-distance 0.0% , center 50.0% 50.0%, radius 50.0%, white 5.0%, whitesmoke 95.0%);
+}
+
+.slider .track {
+    -fx-background-color: #505050;
+}
+
+.textfield{
+    -fx-background-color: #505050;
+    -fx-text-fill:whitesmoke;
+}
+
+.textfield:focused {
+    -fx-background-color: #606060;
+}
+
+.polygonSide {
+    -fx-background-image: url("/images/bg.png");
+}
+
+

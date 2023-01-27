@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
+import javafx.scene.layout.BackgroundImage;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import java.io.IOException;
@@ -27,7 +28,7 @@ public class Main extends Application {
         double scaleX = screen.getOutputScaleX();
         double scaleY = screen.getOutputScaleY();
 
-        Image icon = new Image(String.valueOf(Main.class.getResource("cg512x512.jpg")));
+        Image icon = new Image(String.valueOf(Main.class.getResource("/images/icon.jpg")));
 
         try {
             stage.getIcons().add(icon);
