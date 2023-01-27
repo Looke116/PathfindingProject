@@ -23,7 +23,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.util.*;
 
-public class MainViewController implements RandomCreate,Collision  {
+public class MainViewController {
 
     @FXML
     private AnchorPane canvas;
@@ -57,7 +57,6 @@ public class MainViewController implements RandomCreate,Collision  {
         canvasIsEmpty=false;
     }
 
-    @Override
     public void setRandomColor(Shape shape) {
         shape.setFill(new Color(
                 random.nextDouble(0, 1),
@@ -80,7 +79,6 @@ public class MainViewController implements RandomCreate,Collision  {
         canvas.getChildren().clear();
     }
 
-    @Override
     public void genRandomPolygons() {
         double maxX = canvas.getWidth();
         double maxY = canvas.getHeight();
@@ -134,7 +132,6 @@ public class MainViewController implements RandomCreate,Collision  {
 
     }
 
-    @Override
     public void genRandomPoints(){
         double maxX = canvas.getWidth();
         double maxY = canvas.getHeight();
@@ -177,9 +174,9 @@ public class MainViewController implements RandomCreate,Collision  {
         draw(new Circle(endPoint.getX(),endPoint.getY(),3,Color.BLUE));
 
         graph = new Graph(allPoints.size());
-        graph.run();
-        //graph.calculateVisibilityGraph();
-        calculateEuclidieanDistances();
+        graph.calculateVisibiltyGraph();
+        graph.calculateEuclidieanDistances();
+        //System.out.println(Dijkstra.shortestPath(graph,startPoint,endPoint));
     }
 
     private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
@@ -465,7 +462,7 @@ public class MainViewController implements RandomCreate,Collision  {
         }
         return output;
     }
-    @Override
+
     public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt){
         for (PolygonCustom p : plgList) {
             if (p.contains(pt)){
@@ -474,7 +471,7 @@ public class MainViewController implements RandomCreate,Collision  {
         }
         return false;
     }
-    @Override
+
     public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape){
         for (PolygonCustom p : plgList) {
             if (p.intersects(shape.getBoundsInParent())) {
@@ -562,24 +559,6 @@ public class MainViewController implements RandomCreate,Collision  {
             result.add(startPoint);
         }
         return result;
-    }
-
-    public double euclideanDistance(Point2DCustom p1, Point2DCustom p2){
-        double xDiff = p1.getX() - p2.getX();
-        double yDiff = p1.getY() - p2.getY();
-
-        return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
-    }
-
-    public void calculateEuclidieanDistances(){
-        for (Point2DCustom vertex : allPoints) {
-            ArrayList<VisibleVertex> edgeList = graph.AdjList.get(vertex);
-            for (VisibleVertex edge : edgeList) {
-
-                edge.distance = euclideanDistance(vertex, edge.vertex);
-                //System.out.println(vertex + " - " + edge.vertex + ": " +edge.distance);
-            }
-        }
     }
 
     static class ShapeSizeException extends Exception {
