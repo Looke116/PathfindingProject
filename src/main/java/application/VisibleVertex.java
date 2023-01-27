@@ -7,6 +7,7 @@ public class VisibleVertex {
         this.vertex = vertex;
         this.distance = distance;
     }
+
     @Override
     public String toString() {
         return "\nvertex=" + vertex +

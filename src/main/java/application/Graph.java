@@ -4,7 +4,7 @@ import java.util.*;
 
 import static application.MainViewController.allPoints;
 
-public class Graph extends Thread {
+public class Graph {
     protected int noOfVertices;
     public HashMap<Point2DCustom, ArrayList<VisibleVertex>> AdjList;
 
@@ -13,8 +13,7 @@ public class Graph extends Thread {
         AdjList = new HashMap<Point2DCustom, ArrayList<VisibleVertex>>();
     }
 
-    @Override
-    public void run() {
+    public void calculateVisibiltyGraph() {
         for (Point2DCustom vertex : allPoints) {
 
             ArrayList<Point2DCustom> visibleFromVertex = MainViewController.VisibleVertices(vertex);
@@ -25,6 +24,25 @@ public class Graph extends Thread {
             }
         }
     }
+
+    public void calculateEuclidieanDistances(){
+        for (Point2DCustom vertex : allPoints) {
+            ArrayList<VisibleVertex> edgeList = this.AdjList.get(vertex);
+            for (VisibleVertex edge : edgeList) {
+
+                edge.distance = euclideanDistance(vertex, edge.vertex);
+            }
+        }
+    }
+
+    public double euclideanDistance(Point2DCustom p1, Point2DCustom p2){
+        double xDiff = p1.getX() - p2.getX();
+        double yDiff = p1.getY() - p2.getY();
+
+        return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+    }
+
+
 
     public void addEdge(Point2DCustom src, VisibleVertex dest){
         if (this.AdjList.get(src)==null){
