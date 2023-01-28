@@ -37,8 +37,8 @@ public class MainViewController {
     private Label warningText;
     @FXML
     private AnchorPane warningPane;
-    public final int MIN_VERTICES = 5;
-    public final int MAX_VERTICES = 12;
+    public final int MIN_VERTICES = 3;
+    public final int MAX_VERTICES = 5;
 
 
     private final Stage warningStage = new Stage();
@@ -176,7 +176,7 @@ public class MainViewController {
         graph = new Graph(allPoints.size());
         graph.calculateVisibiltyGraph();
         graph.calculateEuclidieanDistances();
-        //System.out.println(Dijkstra.shortestPath(graph,startPoint,endPoint));
+        System.out.println(Dijkstra.shortestPath(graph,startPoint,endPoint));
     }
 
     private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {

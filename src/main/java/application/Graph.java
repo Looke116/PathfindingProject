@@ -17,7 +17,7 @@ public class Graph {
         for (Point2DCustom vertex : allPoints) {
 
             ArrayList<Point2DCustom> visibleFromVertex = MainViewController.VisibleVertices(vertex);
-            ArrayList<VisibleVertex> edges = new ArrayList<VisibleVertex>();
+            //ArrayList<VisibleVertex> edges = new ArrayList<VisibleVertex>();
 
             for (Point2DCustom visibleVertex : visibleFromVertex) {
                 addEdge(vertex,new VisibleVertex(visibleVertex,0.0));
@@ -35,7 +35,7 @@ public class Graph {
         }
     }
 
-    public double euclideanDistance(Point2DCustom p1, Point2DCustom p2){
+    public static double euclideanDistance(Point2DCustom p1, Point2DCustom p2){
         double xDiff = p1.getX() - p2.getX();
         double yDiff = p1.getY() - p2.getY();
 
