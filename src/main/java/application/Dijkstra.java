@@ -1,13 +1,15 @@
 package application;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.PriorityQueue;
 
 public class Dijkstra {
     public static ArrayList<Point2DCustom> shortestPath(Graph graph, Point2DCustom start, Point2DCustom end) {
         // Initialize variables
         HashMap<Point2DCustom, Double> distances = new HashMap<Point2DCustom, Double>();
         HashMap<Point2DCustom, Point2DCustom> previous = new HashMap<Point2DCustom, Point2DCustom>();
-        PriorityQueue<VisibleVertex> unvisited = new PriorityQueue<VisibleVertex>((a, b) -> (int)(a.distance - b.distance));
+        PriorityQueue<VisibleVertex> unvisited = new PriorityQueue<VisibleVertex>((a, b) -> (int) (a.distance - b.distance));
 
         // Set initial distance for all vertices to infinity, except for start vertex
         for (Point2DCustom vertex : graph.AdjList.keySet()) {
@@ -23,12 +25,12 @@ public class Dijkstra {
         // Dijkstra algorithm
         while (!unvisited.isEmpty()) {
             VisibleVertex current = unvisited.poll();
-            System.out.println(unvisited);
+//            System.out.println(unvisited);
             // End search if we have reached the end vertex
-            if (current.vertex.equals(end)) {
-                distances.put(end, distances.get(current.vertex));
-                break;
-            }
+//            if (current.vertex.equals(end)) {
+//                distances.put(end, distances.get(current.vertex));
+//                break;
+//            }
 
             // Update distances for neighboring vertices
             ArrayList<VisibleVertex> edges = graph.AdjList.get(current.vertex);
@@ -36,7 +38,13 @@ public class Dijkstra {
                 Point2DCustom neighbor = edge.vertex;
                 double distance = edge.distance;
 
-                double newDistance = distances.get(current.vertex) + distance;
+                double newDistance;
+                if (distances.get(current.vertex) == Double.POSITIVE_INFINITY) {
+                    newDistance = distance;
+                } else {
+                    newDistance = distances.get(current.vertex) + distance;
+                }
+
                 if (newDistance < distances.get(neighbor)) {
                     distances.put(neighbor, newDistance);
                     previous.put(neighbor, current.vertex);
@@ -44,8 +52,6 @@ public class Dijkstra {
                     unvisited.add(new VisibleVertex(neighbor, newDistance));
                 }
             }
-
-
         }
 
         System.out.println(distances);
@@ -61,4 +67,6 @@ public class Dijkstra {
         java.util.Collections.reverse(path);
         return path;
     }
+
+
 }

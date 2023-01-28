@@ -3,9 +3,13 @@ package application;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
@@ -20,11 +24,27 @@ import javafx.stage.Stage;
 import org.jgrapht.util.AVLTree;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 
-public class MainViewController {
+public class MainViewController implements Initializable {
 
+    protected static List<Point2DCustom> allPoints = new ArrayList<>();
+    protected static List<PolygonCustom> polygonListGlobal = new ArrayList<>();
+    protected static Point2DCustom startPoint;
+    protected static Point2DCustom endPoint;
+    static Graph graph;
+    private static boolean canvasIsEmpty = true;
+    public final int MIN_VERTICES = 3;
+    public final int MAX_VERTICES = 5;
+
+
+    private final Stage warningStage = new Stage();
+    private final Random random = new Random();
+    private final List<Point2DCustom> pointList = new ArrayList<>();
+    private Circle cursor = new Circle(0, 0, 2);
     @FXML
     private AnchorPane canvas;
     @FXML
@@ -37,24 +57,162 @@ public class MainViewController {
     private Label warningText;
     @FXML
     private AnchorPane warningPane;
-    public final int MIN_VERTICES = 3;
-    public final int MAX_VERTICES = 5;
-
-
-    private final Stage warningStage = new Stage();
-    private final Random random = new Random();
-    private final List<Point2DCustom> pointList = new ArrayList<>();
-    protected static List<Point2DCustom> allPoints = new ArrayList<>();
-    protected static List<PolygonCustom> polygonListGlobal = new ArrayList<>();
-    protected static Point2DCustom startPoint;
-    protected static Point2DCustom endPoint;
+    @FXML
+    private Label coordinatesDisplay;
     private AVLTree<Double> avl;
-    static Graph graph;
-    private static boolean canvasIsEmpty = true;
+
+    private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
+        boolean changed;
+        do {
+            changed = false;
+            for (int i = 0; i < points.length - 1; i++) {
+                if (comparePoint(points[i + 1], points[i], center)) {
+                    Point2DCustom temp = points[i];
+                    points[i] = points[i + 1];
+                    points[i + 1] = temp;
+                    changed = true;
+                }
+            }
+        } while (changed);
+    }
+
+    private static boolean comparePoint(Point2DCustom a, Point2DCustom b, Point2DCustom center) {
+
+        if (a.getX() - center.getX() >= 0 && b.getX() - center.getX() < 0) {
+            return true;
+        }
+        if (a.getX() - center.getX() < 0 && b.getX() - center.getX() >= 0) {
+            return false;
+        }
+        if (a.getX() - center.getX() == 0 && b.getX() - center.getX() == 0) {
+            if (a.getY() - center.getY() >= 0 || b.getY() - center.getY() >= 0) {
+                return a.getY() > b.getY();
+            }
+            return b.getY() > a.getY();
+        }
+
+        // compute the cross product of vectors (center -> a) x (center -> b)
+        double det = (a.getX() - center.getX()) * (b.getY() - center.getY()) -
+                (b.getX() - center.getX()) * (a.getY() - center.getY());
+        if (det < 0) {
+            return true;
+        }
+        if (det > 0) {
+            return false;
+        }
+
+        // points a and b are on the same line from the center
+        // check which point is closer to the center
+        double d1 = (a.getX() - center.getX()) * (a.getX() - center.getX()) +
+                (a.getY() - center.getY()) * (a.getY() - center.getY());
+        double d2 = (b.getX() - center.getX()) * (b.getX() - center.getX()) +
+                (b.getY() - center.getY()) * (b.getY() - center.getY());
+        return d1 > d2;
+    }
+
+    public static boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
+        double x1 = line.getStartX();
+        double y1 = line.getStartY();
+        double x2 = line.getEndX();
+        double y2 = line.getEndY();
+        // go through each of the vertices, plus the next
+        // vertex in the list
+        int next = 0;
+
+
+        for (PolygonCustom pol : polygons) {
+            Point2DCustom[] vertices = pol.getPointsList();
+            for (int current = 0; current < vertices.length; current++) {
+
+                // get next vertex in list
+                // if we've hit the end, wrap around to 0
+                next = current + 1;
+                if (next == vertices.length) next = 0;
+
+                // get the PVectors at our current position
+                // extract X/Y coordinates from each
+                double x3 = vertices[current].getX();
+                double y3 = vertices[current].getY();
+                double x4 = vertices[next].getX();
+                double y4 = vertices[next].getY();
+
+                // do a Line/Line comparison
+                // if true, return 'true' immediately and
+                // stop testing (faster)
+                boolean hit = lineLine(x1, y1, x2, y2, x3, y3, x4, y4);
+                if (hit) {
+                    return false;
+                }
+            }
+        }
+        //System.out.println(euclideanDistance(line.getStartPoint(),line.getEndPoint()));
+        return true;
+    }
+
+    public static boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
+
+        double denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
+        double numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
+        double numerator2 = ((y1 - y3) * (x2 - x1)) - ((x1 - x3) * (y2 - y1));
+
+        if (denominator == 0) return numerator1 == 0 && numerator2 == 0;
+
+        double r = numerator1 / denominator;
+        double s = numerator2 / denominator;
+        r = Math.round(r * 10000.0) / 10000.0;
+        s = Math.round(s * 10000.0) / 10000.0;
+        return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
+    }
+
+    public static ArrayList<Point2DCustom> VisibleVertices(Point2DCustom p) {
+        ArrayList<Point2DCustom> result = new ArrayList<Point2DCustom>();
+        for (PolygonCustom pol : polygonListGlobal) {
+            for (Point2DCustom vert : pol.PointsList) {
+
+                if (
+                        (p != vert) &&
+                                (!((new ArrayList<>(Arrays.asList(pol.PointsList)).contains(p)) &&
+                                        (new ArrayList<>(Arrays.asList(pol.PointsList)).contains(vert)))) &&
+                                (Visible(polygonListGlobal, new LineCustom(p, vert)))
+                ) {
+                    result.add(vert);
+                } else if (new ArrayList<>(Arrays.asList(pol.PointsList)).contains(p)) {
+                    result.add(pol.leftNeighbour(p));
+                    result.add(pol.rightNeighbour(p));
+                }
+            }
+        }
+        if ((p == startPoint) && (Visible(polygonListGlobal, new LineCustom(p, endPoint)))) {
+            result.add(endPoint);
+        } else if ((p == endPoint) && (Visible(polygonListGlobal, new LineCustom(p, startPoint)))) {
+            result.add(startPoint);
+        }
+        return result;
+    }
+
+    public static void checkPolGen(int tries) throws ShapeSizeException {
+        if (tries >= 200) {
+            throw new ShapeSizeException("Shapes are too many and/or too big. Reduce the shape number and/or size");
+        }
+    }
+
+    public static void checkEmpty(AnchorPane a) throws EmptyCanvasException {
+        if (canvasIsEmpty) {
+            throw new EmptyCanvasException("Canvas Already empty");
+        } else {
+            a.getChildren().clear();
+            canvasIsEmpty = true;
+        }
+    }
+
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        canvas.getChildren().add(cursor);
+    }
 
     protected void draw(Node node) {
         canvas.getChildren().add(node);
-        canvasIsEmpty=false;
+        canvasIsEmpty = false;
     }
 
     public void setRandomColor(Shape shape) {
@@ -132,17 +290,17 @@ public class MainViewController {
 
     }
 
-    public void genRandomPoints(){
+    public void genRandomPoints() {
         double maxX = canvas.getWidth();
         double maxY = canvas.getHeight();
 
-        do{
+        do {
             startPoint = new Point2DCustom(random.nextDouble(0, maxX), random.nextDouble(0, maxY));
-        } while (inAnyPolygon(polygonListGlobal,startPoint));
+        } while (inAnyPolygon(polygonListGlobal, startPoint));
 
-        do{
+        do {
             endPoint = new Point2DCustom(random.nextDouble(0, maxX), random.nextDouble(0, maxY));
-        } while (inAnyPolygon(polygonListGlobal,endPoint));
+        } while (inAnyPolygon(polygonListGlobal, endPoint));
 
         allPoints.add(startPoint);
         allPoints.add(endPoint);
@@ -159,73 +317,8 @@ public class MainViewController {
 
         genRandomPoints();
 
-        for(Point2DCustom p : allPoints){
-
-            for(Point2DCustom p1 : VisibleVertices(p)){
-
-                draw(new Circle(p.getX(),p.getY(),1));
-                LineCustom l = new LineCustom(p,p1);
-                l.setOpacity(0.2);
-                draw(l);
-            }
-
-        }
-        draw(new Circle(startPoint.getX(),startPoint.getY(),3,Color.RED));
-        draw(new Circle(endPoint.getX(),endPoint.getY(),3,Color.BLUE));
-
-        graph = new Graph(allPoints.size());
-        graph.calculateVisibiltyGraph();
-        graph.calculateEuclidieanDistances();
-        System.out.println(Dijkstra.shortestPath(graph,startPoint,endPoint));
-    }
-
-    private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
-        boolean changed;
-        do {
-            changed = false;
-            for (int i = 0; i < points.length - 1; i++) {
-                if (comparePoint(points[i + 1], points[i], center)) {
-                    Point2DCustom temp = points[i];
-                    points[i] = points[i + 1];
-                    points[i + 1] = temp;
-                    changed = true;
-                }
-            }
-        } while (changed);
-    }
-
-    private static boolean comparePoint(Point2DCustom a, Point2DCustom b, Point2DCustom center) {
-
-        if (a.getX() - center.getX() >= 0 && b.getX() - center.getX() < 0) {
-            return true;
-        }
-        if (a.getX() - center.getX() < 0 && b.getX() - center.getX() >= 0) {
-            return false;
-        }
-        if (a.getX() - center.getX() == 0 && b.getX() - center.getX() == 0) {
-            if (a.getY() - center.getY() >= 0 || b.getY() - center.getY() >= 0) {
-                return a.getY() > b.getY();
-            }
-            return b.getY() > a.getY();
-        }
-
-        // compute the cross product of vectors (center -> a) x (center -> b)
-        double det = (a.getX() - center.getX()) * (b.getY() - center.getY()) -
-                (b.getX() - center.getX()) * (a.getY() - center.getY());
-        if (det < 0) {
-            return true;
-        }
-        if (det > 0) {
-            return false;
-        }
-
-        // points a and b are on the same line from the center
-        // check which point is closer to the center
-        double d1 = (a.getX() - center.getX()) * (a.getX() - center.getX()) +
-                (a.getY() - center.getY()) * (a.getY() - center.getY());
-        double d2 = (b.getX() - center.getX()) * (b.getX() - center.getX()) +
-                (b.getY() - center.getY()) * (b.getY() - center.getY());
-        return d1 > d2;
+        draw(new Circle(startPoint.getX(), startPoint.getY(), 3, Color.LIME));
+        draw(new Circle(endPoint.getX(), endPoint.getY(), 3, Color.BLUE));
     }
 
     @FXML
@@ -270,6 +363,43 @@ public class MainViewController {
         );
         line.setFill(Color.LIGHTBLUE);
         draw(line);
+    }
+
+    @FXML
+    protected void mouseEntered() {
+        coordinatesDisplay.setVisible(true);
+    }
+
+    @FXML
+    protected void mouseExited() {
+        canvas.getChildren().remove(cursor);
+        coordinatesDisplay.setVisible(false);
+    }
+
+    @FXML
+    protected void mouseMoved(MouseEvent event) {
+        double mouseX = event.getX();
+        double mouseY = event.getY();
+
+        cursor.setCenterX(mouseX);
+        cursor.setCenterY(mouseY);
+        cursor.setFill(Color.RED);
+
+        List<Node> elements = canvas.getChildren();
+        for (int i = 0; i < elements.size(); i++) {
+            Node element = elements.get(i);
+
+            if (element.getClass() != Circle.class) continue;
+            if (((Circle) element).getFill() != Color.RED) continue;
+            if (((Circle) element).getRadius() != 5) continue;
+
+            //noinspection SuspiciousListRemoveInLoop
+            elements.remove(i);
+        }
+
+        coordinatesDisplay.setText("X: " + Math.round(mouseX * 100f) / 100 +
+                System.lineSeparator() +
+                "Y: " + Math.round(mouseY * 100f) / 100);
     }
 
     private void removeLastPoint() {
@@ -321,25 +451,6 @@ public class MainViewController {
     }
 
     @FXML
-    protected void mouseMoved(MouseEvent event) {
-        Circle circle = new Circle(event.getX(), event.getY(), 5);
-        circle.setFill(Color.RED);
-
-        List<Node> elements = canvas.getChildren();
-        for (int i = 0; i < elements.size(); i++) {
-            Node element = elements.get(i);
-
-            if (element.getClass() != Circle.class) continue;
-            if (((Circle) element).getFill() != Color.RED) continue;
-            if (((Circle) element).getRadius() != 5) continue;
-
-            //noinspection SuspiciousListRemoveInLoop
-            elements.remove(i);
-        }
-        canvas.getChildren().add(circle);
-    }
-
-    @FXML
     protected void showHoverText() {
     }
 
@@ -363,7 +474,7 @@ public class MainViewController {
 
         clearCanvas();
         String content = readAllLines(file);
-        content.trim();
+        content = content.trim();
         JSONObject object = new JSONObject(content);
 
         JSONArray polygonArray = object.getJSONArray("Polygons");
@@ -385,8 +496,9 @@ public class MainViewController {
             double centerX = circleArray.getJSONObject(i).getDouble("centerX");
             double centerY = circleArray.getJSONObject(i).getDouble("centerY");
             double radius = circleArray.getJSONObject(i).getDouble("radius");
-            Circle circle =new Circle(centerX,centerY,radius);
-            circle.setFill(Paint.valueOf(polygonArray.getJSONObject(i).getString("color")));
+            Circle circle = new Circle(centerX, centerY, radius);
+            circle.setFill(Paint.valueOf(circleArray.getJSONObject(i).getString("color")));
+            draw(circle);
         }
     }
 
@@ -412,7 +524,7 @@ public class MainViewController {
             JSONArray circleArray = new JSONArray();
 
             for (Node element : elements) {
-                if (element.getClass() == Polygon.class) {
+                if (element.getClass() == PolygonCustom.class) {
                     JSONArray points = new JSONArray();
                     points.putAll(((Polygon) element).getPoints());
 
@@ -428,9 +540,13 @@ public class MainViewController {
                     object.put("centerX", ((Circle) element).getCenterX());
                     object.put("centerY", ((Circle) element).getCenterY());
                     object.put("radius", ((Circle) element).getRadius());
-                    object.put("color", ((Polygon) element).getFill());
+                    if (((Circle) element).getFill() == Color.LIME) {
+                        object.put("color", "Lime");
+                    } else if (((Circle) element).getFill() == Color.BLUE) {
+                        object.put("color", "Blue");
+                    }
 
-                    polygonArray.put(object);
+                    circleArray.put(object);
                 }
             }
 
@@ -463,16 +579,16 @@ public class MainViewController {
         return output;
     }
 
-    public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt){
+    public boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt) {
         for (PolygonCustom p : plgList) {
-            if (p.contains(pt)){
+            if (p.contains(pt)) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape){
+    public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape) {
         for (PolygonCustom p : plgList) {
             if (p.intersects(shape.getBoundsInParent())) {
                 return true;
@@ -481,99 +597,7 @@ public class MainViewController {
         return false;
     }
 
-    public static boolean Visible(List<PolygonCustom> polygons, LineCustom line) {
-        double x1 = line.getStartX();
-        double y1 = line.getStartY();
-        double x2 = line.getEndX();
-        double y2 = line.getEndY();
-        // go through each of the vertices, plus the next
-        // vertex in the list
-        int next = 0;
-
-
-        for(PolygonCustom pol : polygons) {
-            Point2DCustom[] vertices = pol.getPointsList();
-            for (int current = 0; current < vertices.length; current++) {
-
-                // get next vertex in list
-                // if we've hit the end, wrap around to 0
-                next = current + 1;
-                if (next == vertices.length) next = 0;
-
-                // get the PVectors at our current position
-                // extract X/Y coordinates from each
-                double x3 = vertices[current].getX();
-                double y3 = vertices[current].getY();
-                double x4 = vertices[next].getX();
-                double y4 = vertices[next].getY();
-
-                // do a Line/Line comparison
-                // if true, return 'true' immediately and
-                // stop testing (faster)
-                boolean hit = lineLine(x1, y1, x2, y2, x3, y3, x4, y4);
-                if (hit) {
-                    return false;
-                }
-            }
-        }
-        //System.out.println(euclideanDistance(line.getStartPoint(),line.getEndPoint()));
-        return true;
-    }
-
-    public static boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
-
-        double denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
-        double numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
-        double numerator2 = ((y1 - y3) * (x2 - x1)) - ((x1 - x3) * (y2 - y1));
-
-        if (denominator == 0) return numerator1 == 0 && numerator2 == 0;
-
-        double r = numerator1 / denominator;
-        double s = numerator2 / denominator;
-        r = Math.round(r*10000.0)/10000.0;
-        s = Math.round(s*10000.0)/10000.0;
-        return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
-    }
-
-    public static ArrayList<Point2DCustom> VisibleVertices(Point2DCustom p){
-        ArrayList<Point2DCustom> result = new ArrayList<Point2DCustom>();
-        for(PolygonCustom pol : polygonListGlobal){
-            for(Point2DCustom vert : pol.PointsList){
-
-                if(
-                        (p!=vert) &&
-                        (!((new ArrayList<>(Arrays.asList(pol.PointsList)).contains(p)) &&
-                        (new ArrayList<>(Arrays.asList(pol.PointsList)).contains(vert)))) &&
-                        (Visible(polygonListGlobal,new LineCustom(p,vert)))
-                ){
-                    result.add(vert);
-                } else if (new ArrayList<>(Arrays.asList(pol.PointsList)).contains(p)) {
-                    result.add(pol.leftNeighbour(p));
-                    result.add(pol.rightNeighbour(p));
-                }
-            }
-        }
-        if ((p==startPoint) && (Visible(polygonListGlobal,new LineCustom(p,endPoint)))){
-            result.add(endPoint);
-        } else if ((p==endPoint) && (Visible(polygonListGlobal,new LineCustom(p,startPoint)))) {
-            result.add(startPoint);
-        }
-        return result;
-    }
-
-    static class ShapeSizeException extends Exception {
-        public ShapeSizeException(String message) {
-            super("\u001B[31m" + "ShapeSizeException: " + message + "\u001B[0m");
-        }
-    }
-
-    public static void checkPolGen(int tries) throws ShapeSizeException {
-        if (tries >= 200) {
-            throw new ShapeSizeException("Shapes are too many and/or too big. Reduce the shape number and/or size");
-        }
-    }
-
-    public void ShapeSizeExceptionPopup(){
+    public void ShapeSizeExceptionPopup() {
         Scene scene = null;
         try {
             FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("polygon_limit.fxml"));
@@ -594,21 +618,41 @@ public class MainViewController {
     }
 
     @FXML
-    private void terminateWarningWindow(ActionEvent event){
+    private void terminateWarningWindow(ActionEvent event) {
         Stage stage = (Stage) warningPane.getScene().getWindow();
         stage.close();
     }
-    static class EmptyCanvasException extends Exception {
-        public EmptyCanvasException(String message) {
-            super("\u001B[31m" + "EmptyCanvasException: "+ message +"\u001B[0m");
+
+    @FXML
+    public void pathfind() {
+
+        for (Point2DCustom p : allPoints) {
+
+            for (Point2DCustom p1 : VisibleVertices(p)) {
+
+                draw(new Circle(p.getX(), p.getY(), 1));
+                LineCustom l = new LineCustom(p, p1);
+                l.setOpacity(0.2);
+                draw(l);
+            }
+
+        }
+
+        graph = new Graph(allPoints.size());
+        graph.calculateVisibiltyGraph();
+        graph.calculateEuclidieanDistances();
+        System.out.println(Dijkstra.shortestPath(graph, startPoint, endPoint));
+    }
+
+    static class ShapeSizeException extends Exception {
+        public ShapeSizeException(String message) {
+            super("\u001B[31m" + "ShapeSizeException: " + message + "\u001B[0m");
         }
     }
-    public static void checkEmpty(AnchorPane a) throws EmptyCanvasException {
-        if (canvasIsEmpty) {
-            throw new EmptyCanvasException("Canvas Already empty");
-        } else {
-            a.getChildren().clear();
-            canvasIsEmpty=true;
+
+    static class EmptyCanvasException extends Exception {
+        public EmptyCanvasException(String message) {
+            super("\u001B[31m" + "EmptyCanvasException: " + message + "\u001B[0m");
         }
     }
 }
