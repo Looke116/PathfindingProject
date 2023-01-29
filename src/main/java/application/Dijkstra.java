@@ -1,72 +1,64 @@
 package application;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.PriorityQueue;
+import java.util.*;
 
 public class Dijkstra {
     public static ArrayList<Point2DCustom> shortestPath(Graph graph, Point2DCustom start, Point2DCustom end) {
-        // Initialize variables
-        HashMap<Point2DCustom, Double> distances = new HashMap<Point2DCustom, Double>();
-        HashMap<Point2DCustom, Point2DCustom> previous = new HashMap<Point2DCustom, Point2DCustom>();
-        PriorityQueue<VisibleVertex> unvisited = new PriorityQueue<VisibleVertex>((a, b) -> (int) (a.distance - b.distance));
+        // Create a priority queue to store vertices that are waiting to be processed
+        PriorityQueue<VisibleVertex> queue = new PriorityQueue<>(new Comparator<VisibleVertex>() {
+            @Override
+            public int compare(VisibleVertex v1, VisibleVertex v2) {
+                return Double.compare(v1.distance, v2.distance);
+            }
+        });
 
-        // Set initial distance for all vertices to infinity, except for start vertex
+        // Create a HashMap to store the shortest distance from the start vertex to each vertex
+        HashMap<Point2DCustom, Double> distance = new HashMap<>();
         for (Point2DCustom vertex : graph.AdjList.keySet()) {
-            if (vertex.equals(start)) {
-                distances.put(vertex, 0.0);
-                unvisited.add(new VisibleVertex(vertex, 0.0));
-            } else {
-                distances.put(vertex, Double.POSITIVE_INFINITY);
-                unvisited.add(new VisibleVertex(vertex, Double.POSITIVE_INFINITY));
-            }
+            distance.put(vertex, Double.MAX_VALUE);
         }
+        distance.replace(start, 0.0);
 
-        // Dijkstra algorithm
-        while (!unvisited.isEmpty()) {
-            VisibleVertex current = unvisited.poll();
-//            System.out.println(unvisited);
-            // End search if we have reached the end vertex
-//            if (current.vertex.equals(end)) {
-//                distances.put(end, distances.get(current.vertex));
-//                break;
-//            }
+        // Create a HashMap to store the previous vertex in the shortest path from the start vertex to each vertex
+        HashMap<Point2DCustom, Point2DCustom> previous = new HashMap<>();
 
-            // Update distances for neighboring vertices
-            ArrayList<VisibleVertex> edges = graph.AdjList.get(current.vertex);
-            for (VisibleVertex edge : edges) {
-                Point2DCustom neighbor = edge.vertex;
-                double distance = edge.distance;
+        // Add the start vertex to the queue
+        queue.offer(new VisibleVertex(start, 0));
 
-                double newDistance;
-                if (distances.get(current.vertex) == Double.POSITIVE_INFINITY) {
-                    newDistance = distance;
-                } else {
-                    newDistance = distances.get(current.vertex) + distance;
-                }
+        while (!queue.isEmpty()) {
+            // Get the vertex with the shortest distance from the queue
+            Point2DCustom current = queue.poll().vertex;
 
-                if (newDistance < distances.get(neighbor)) {
-                    distances.put(neighbor, newDistance);
-                    previous.put(neighbor, current.vertex);
-                    unvisited.remove(new VisibleVertex(neighbor, distances.get(neighbor)));
-                    unvisited.add(new VisibleVertex(neighbor, newDistance));
+            // Get the neighbors of the current vertex
+            ArrayList<VisibleVertex> neighbors = graph.AdjList.get(current);
+
+            // Update the distance of each neighbor
+            for (VisibleVertex neighbor : neighbors) {
+                double newDistance = distance.get(current) + neighbor.distance;
+                if (newDistance < distance.get(neighbor.vertex)) {
+                    distance.replace(neighbor.vertex, newDistance);
+                    previous.put(neighbor.vertex, current);
+                    queue.offer(new VisibleVertex(neighbor.vertex, newDistance));
                 }
             }
         }
 
-        System.out.println(distances);
-        // Build the shortest path by following the previous pointers
-        ArrayList<Point2DCustom> path = new ArrayList<Point2DCustom>();
-        Point2DCustom current = end;
-        while (current != null) {
-            path.add(current);
-            current = previous.get(current);
+        // Create an ArrayList to store the shortest path from the start vertex to the end vertex
+        ArrayList<Point2DCustom> path = new ArrayList<>();
+        path.add(end);
+
+        // Get the previous vertex in the path
+        Point2DCustom previousVertex = previous.get(end);
+
+        // Iterate through the previous vertices to build the shortest path
+        while (previousVertex != null) {
+            path.add(previousVertex);
+            previousVertex = previous.get(previousVertex);
         }
 
-        // Reverse the path and return
-        java.util.Collections.reverse(path);
+        // Reverse the order of the path to get the correct order
+        Collections.reverse(path);
+
         return path;
     }
-
-
 }
