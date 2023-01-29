@@ -1,5 +1,6 @@
 package application;
 
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -18,7 +19,6 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Shape;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import org.jgrapht.util.AVLTree;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -31,21 +31,20 @@ public class MainViewController implements Initializable {
     protected static List<Point2DCustom> allPoints = new ArrayList<>();
     protected static List<PolygonCustom> polygonListGlobal = new ArrayList<>();
     protected static Point2DCustom startPoint;
-    private Circle startPointCircle = new Circle();
     protected static Point2DCustom endPoint;
-    private Circle endPointCircle = new Circle();
     static Graph graph;
     private static boolean canvasIsEmpty = true;
+    private final Stage warningStage = new Stage();
+    private final Random random = new Random();
+    private final List<Point2DCustom> pointList = new ArrayList<>();
+    private Circle startPointCircle = new Circle();
+    private Circle endPointCircle = new Circle();
     @FXML
     private TextField MIN_VERTICES;
     @FXML
     private TextField MAX_VERTICES;
     @FXML
     private CheckBox allPaths;
-
-    private final Stage warningStage = new Stage();
-    private final Random random = new Random();
-    private final List<Point2DCustom> pointList = new ArrayList<>();
     private Circle cursor = new Circle(0, 0, 2);
     @FXML
     private AnchorPane canvas;
@@ -169,21 +168,21 @@ public class MainViewController implements Initializable {
         return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
     }
 
-    public static void calculateVisibiltyGraph(){
-        if ((PolLine(polygonListGlobal, new LineCustom(startPoint, endPoint)))){
+    public static void calculateVisibiltyGraph() {
+        if ((PolLine(polygonListGlobal, new LineCustom(startPoint, endPoint)))) {
             graph.addEdge(startPoint, new VisibleVertex(endPoint, 0.0));
             graph.addEdge(endPoint, new VisibleVertex(startPoint, 0.0));
         }
-        for (PolygonCustom pol : polygonListGlobal){
-            for (Point2DCustom currentPoint : pol.PointsList){
+        for (PolygonCustom pol : polygonListGlobal) {
+            for (Point2DCustom currentPoint : pol.PointsList) {
                 graph.addEdge(currentPoint, new VisibleVertex(pol.leftNeighbour(currentPoint), 0.0));
                 graph.addEdge(currentPoint, new VisibleVertex(pol.rightNeighbour(currentPoint), 0.0));
-                for(Point2DCustom comparedPoint : allPoints){
-                    if (inSamePolygon(currentPoint,comparedPoint)==null && currentPoint!=comparedPoint) {
+                for (Point2DCustom comparedPoint : allPoints) {
+                    if (inSamePolygon(currentPoint, comparedPoint) == null && currentPoint != comparedPoint) {
                         if ((PolLine(polygonListGlobal, new LineCustom(currentPoint, comparedPoint)))) {
                             graph.addEdge(currentPoint, new VisibleVertex(comparedPoint, 0.0));
                         }
-                        if((!inAnyPolygon(polygonListGlobal,comparedPoint)) && (PolLine(polygonListGlobal, new LineCustom(currentPoint, comparedPoint)))){
+                        if ((!inAnyPolygon(polygonListGlobal, comparedPoint)) && (PolLine(polygonListGlobal, new LineCustom(currentPoint, comparedPoint)))) {
                             graph.addEdge(comparedPoint, new VisibleVertex(currentPoint, 0.0));
                         }
                     }
@@ -205,6 +204,24 @@ public class MainViewController implements Initializable {
             a.getChildren().clear();
             canvasIsEmpty = true;
         }
+    }
+
+    public static boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt) {
+        for (PolygonCustom p : plgList) {
+            if (p.contains(pt)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static PolygonCustom inSamePolygon(Point2DCustom p1, Point2DCustom p2) {
+        for (PolygonCustom pol : polygonListGlobal) {
+            if (Arrays.asList(pol.PointsList).contains(p1) && Arrays.asList(pol.PointsList).contains(p2)) {
+                return pol;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -309,8 +326,8 @@ public class MainViewController implements Initializable {
         allPoints.add(startPoint);
         allPoints.add(endPoint);
 
-        startPointCircle = new Circle(startPoint.getX(),startPoint.getY(),4,Color.LIGHTBLUE);
-        endPointCircle = new Circle(endPoint.getX(),endPoint.getY(),4,Color.DARKBLUE);
+        startPointCircle = new Circle(startPoint.getX(), startPoint.getY(), 4, Color.LIGHTBLUE);
+        endPointCircle = new Circle(endPoint.getX(), endPoint.getY(), 4, Color.DARKBLUE);
         startPointCircle.setVisible(true);
         endPointCircle.setVisible(true);
 
@@ -334,8 +351,6 @@ public class MainViewController implements Initializable {
     @FXML
     protected void mouseClicked(MouseEvent event) {
         if (drawToggle.isSelected()) {
-            setEnd.setSelected(false);
-            setStart.setSelected(false);
 
             if (event.getButton() == MouseButton.SECONDARY) {
                 removeLastPoint();
@@ -373,17 +388,14 @@ public class MainViewController implements Initializable {
             );
             line.setFill(Color.LIGHTBLUE);
             draw(line);
-        }
-        if (setStart.isSelected()) {
-            drawToggle.setSelected(false);
-            setEnd.setSelected(false);
+        } else if (setStart.isSelected()) {
 
             Point2DCustom currentPoint = new Point2DCustom(event.getX(), event.getY());
 
             List<Node> elements = canvas.getChildren();
             for (int i = elements.size() - 1; i >= 0; i--) {
                 Node element = elements.get(i);
-                 if (element.getClass() == Circle.class) {
+                if (element.getClass() == Circle.class) {
                     if (((Circle) element).getFill() == Color.LIGHTBLUE) {
                         elements.remove(i);
                     }
@@ -392,13 +404,10 @@ public class MainViewController implements Initializable {
             allPoints.remove(startPoint);
             startPoint = currentPoint;
             allPoints.add(startPoint);
-            startPointCircle = new Circle(startPoint.getX(),startPoint.getY(),4,Color.LIGHTBLUE);
+            startPointCircle = new Circle(startPoint.getX(), startPoint.getY(), 4, Color.LIGHTBLUE);
             draw(startPointCircle);
             setStart.setSelected(false);
-        }
-        if (setEnd.isSelected()) {
-            drawToggle.setSelected(false);
-            setStart.setSelected(false);
+        } else if (setEnd.isSelected()) {
             Point2DCustom currentPoint = new Point2DCustom(event.getX(), event.getY());
             List<Node> elements = canvas.getChildren();
             for (int i = elements.size() - 1; i >= 0; i--) {
@@ -412,10 +421,28 @@ public class MainViewController implements Initializable {
             allPoints.remove(endPoint);
             endPoint = currentPoint;
             allPoints.add(endPoint);
-            endPointCircle = new Circle(endPoint.getX(),endPoint.getY(),4,Color.DARKBLUE);
+            endPointCircle = new Circle(endPoint.getX(), endPoint.getY(), 4, Color.DARKBLUE);
             draw(endPointCircle);
             setEnd.setSelected(false);
         }
+    }
+
+    @FXML
+    protected void updateTogglesDraw(){
+        setEnd.setSelected(false);
+        setStart.setSelected(false);
+    }
+
+    @FXML
+    protected void updateTogglesStart(){
+        setEnd.setSelected(false);
+        drawToggle.setSelected(false);
+    }
+
+    @FXML
+    protected void updateTogglesEnd(){
+        setStart.setSelected(false);
+        drawToggle.setSelected(false);
     }
 
     @FXML
@@ -493,7 +520,7 @@ public class MainViewController implements Initializable {
 
         Point2DCustom[] points = new Point2DCustom[pointList.size()];
         for (int i = 0; i < pointList.size(); i++) {
-            points[i]=new Point2DCustom(pointList.get(i).getX(),pointList.get(i).getY());
+            points[i] = new Point2DCustom(pointList.get(i).getX(), pointList.get(i).getY());
         }
 
         PolygonCustom polygon = new PolygonCustom(points);
@@ -634,15 +661,6 @@ public class MainViewController implements Initializable {
         return output;
     }
 
-    public static boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt) {
-        for (PolygonCustom p : plgList) {
-            if (p.contains(pt)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape) {
         for (PolygonCustom p : plgList) {
             if (p.intersects(shape.getBoundsInParent())) {
@@ -652,16 +670,7 @@ public class MainViewController implements Initializable {
         return false;
     }
 
-    public static PolygonCustom inSamePolygon(Point2DCustom p1, Point2DCustom p2){
-        for (PolygonCustom pol: polygonListGlobal){
-            if (Arrays.asList(pol.PointsList).contains(p1) && Arrays.asList(pol.PointsList).contains(p2)){
-                return pol;
-            }
-        }
-        return null;
-    }
-
-    public void exceptionPopup(String message){
+    public void exceptionPopup(String message) {
         Scene scene = null;
         try {
             FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("polygon_limit.fxml"));
@@ -686,7 +695,7 @@ public class MainViewController implements Initializable {
         stage.close();
     }
 
-    private void clearPath(){
+    private void clearPath() {
         List<Node> elements = canvas.getChildren();
 
         for (int i = elements.size() - 1; i >= 0; i--) {
@@ -723,8 +732,8 @@ public class MainViewController implements Initializable {
 
         ArrayList<Point2DCustom> shortP = Dijkstra.shortestPath(graph, startPoint, endPoint);
 
-        for (int i=0; i < shortP.size()-1;i++){
-            LineCustom pathLine = new LineCustom(shortP.get(i),shortP.get(i+1));
+        for (int i = 0; i < shortP.size() - 1; i++) {
+            LineCustom pathLine = new LineCustom(shortP.get(i), shortP.get(i + 1));
             pathLine.setStroke(Color.RED);
             pathLine.setStrokeWidth(3);
             pathLine.setOpacity(0.65);
