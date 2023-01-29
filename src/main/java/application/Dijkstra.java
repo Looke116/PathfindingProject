@@ -25,10 +25,16 @@ public class Dijkstra {
         // Add the start vertex to the queue
         queue.offer(new VisibleVertex(start, 0));
 
+        int n = 0;
+
         while (!queue.isEmpty()) {
             // Get the vertex with the shortest distance from the queue
             Point2DCustom current = queue.poll().vertex;
 
+            // If the extracted vertex is the end vertex, the shortest path has been found
+            if (current.equals(end)) {
+                break;
+            }
             // Get the neighbors of the current vertex
             ArrayList<VisibleVertex> neighbors = graph.AdjList.get(current);
 
@@ -39,10 +45,11 @@ public class Dijkstra {
                     distance.replace(neighbor.vertex, newDistance);
                     previous.put(neighbor.vertex, current);
                     queue.offer(new VisibleVertex(neighbor.vertex, newDistance));
+                    n++;
                 }
             }
         }
-
+        System.out.println(n);
         // Create an ArrayList to store the shortest path from the start vertex to the end vertex
         ArrayList<Point2DCustom> path = new ArrayList<>();
         path.add(end);
