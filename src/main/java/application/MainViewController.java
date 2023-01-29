@@ -378,7 +378,6 @@ public class MainViewController implements Initializable {
             drawToggle.setSelected(false);
             setEnd.setSelected(false);
 
-
             Point2DCustom currentPoint = new Point2DCustom(event.getX(), event.getY());
 
             List<Node> elements = canvas.getChildren();
@@ -395,6 +394,7 @@ public class MainViewController implements Initializable {
             allPoints.add(startPoint);
             startPointCircle = new Circle(startPoint.getX(),startPoint.getY(),4,Color.LIGHTBLUE);
             draw(startPointCircle);
+            setStart.setSelected(false);
         }
         if (setEnd.isSelected()) {
             drawToggle.setSelected(false);
@@ -414,6 +414,7 @@ public class MainViewController implements Initializable {
             allPoints.add(endPoint);
             endPointCircle = new Circle(endPoint.getX(),endPoint.getY(),4,Color.DARKBLUE);
             draw(endPointCircle);
+            setEnd.setSelected(false);
         }
     }
 
