@@ -4,7 +4,8 @@
 }
 
 .button, .togglebutton{
-     -fx-background-color: #505050;
+    -fx-background-color: #505050;
+    -fx-text-fill:whitesmoke;
 }
 
 .button:hover, .togglebutton:hover, .buttonOk:hover {
@@ -28,8 +29,7 @@
     -fx-background-color: #606060;
 }
 
-.polygonSide {
-    -fx-background-image: url("/images/bg.png");
+.toggle-button:selected{
+    -fx-background-color: whitesmoke;
+    -fx-text-fill: #606060;
 }
-
-
