@@ -13,15 +13,6 @@ public class Graph {
         AdjList = new HashMap<Point2DCustom, ArrayList<VisibleVertex>>();
     }
 
-/*    public void calculateVisibiltyGraph() {
-        for (Point2DCustom vertex : allPoints) {
-            ArrayList<Point2DCustom> visibleFromVertex = MainViewController.VisibleVertices(vertex);
-            for (Point2DCustom visibleVertex : visibleFromVertex) {
-                addEdge(vertex,new VisibleVertex(visibleVertex,0.0));
-            }
-        }
-    }*/
-
     public void calculateEuclidieanDistances(){
         for (Point2DCustom vertex : allPoints) {
             ArrayList<VisibleVertex> edgeList = this.AdjList.get(vertex);
@@ -49,7 +40,6 @@ public class Graph {
         } catch (NullPointerException e) {
             System.err.println("Error adding edge: " + e.getMessage());
         }
-
     }
 
     @Override

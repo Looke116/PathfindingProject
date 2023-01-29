@@ -246,7 +246,8 @@ public class MainViewController implements Initializable {
 
     @FXML
     public void clearCanvasEvent() {
-
+        polygonListGlobal.clear();
+        allPoints.clear();
         try {
             checkEmpty(canvas);
         } catch (EmptyCanvasException e) {
@@ -256,6 +257,8 @@ public class MainViewController implements Initializable {
 
     public void clearCanvas() {
         canvas.getChildren().clear();
+        polygonListGlobal.clear();
+        allPoints.clear();
     }
 
     public void genRandomPolygons() {
@@ -546,6 +549,7 @@ public class MainViewController implements Initializable {
 
     @FXML
     protected void importFromFile() {
+
         Stage filePickerWindow = new Stage();
 
         FileChooser fileChooser = new FileChooser();
@@ -555,6 +559,9 @@ public class MainViewController implements Initializable {
         if (file == null) return;
 
         clearCanvas();
+        polygonListGlobal.clear();
+        allPoints.clear();
+
         String content = readAllLines(file);
         content = content.trim();
         JSONObject object = new JSONObject(content);
@@ -569,8 +576,16 @@ public class MainViewController implements Initializable {
                 points[j] = pointArray.getDouble(j);
             }
 
-            Polygon polygon = new Polygon(points);
+
+            Point2DCustom[] ptList = new Point2DCustom[points.length/2];
+            for (int j = 0; j < points.length/2; j++){
+                ptList[j] = new Point2DCustom(points[j*2], points[j*2+1]);
+            }
+            PolygonCustom polygon = new PolygonCustom(ptList);
+
             polygon.setFill(Paint.valueOf(polygonArray.getJSONObject(i).getString("color")));
+            polygonListGlobal.add(polygon);
+            allPoints.addAll(Arrays.asList(polygon.PointsList));
             draw(polygon);
         }
 
@@ -579,7 +594,15 @@ public class MainViewController implements Initializable {
             double centerY = circleArray.getJSONObject(i).getDouble("centerY");
             double radius = circleArray.getJSONObject(i).getDouble("radius");
             Circle circle = new Circle(centerX, centerY, radius);
+
             circle.setFill(Paint.valueOf(circleArray.getJSONObject(i).getString("color")));
+            if (circle.getFill()==Color.LIGHTBLUE){
+                startPoint = new Point2DCustom(centerX,centerY);
+                allPoints.add(startPoint);
+            } else if (circle.getFill()==Color.DARKBLUE){
+                endPoint = new Point2DCustom(centerX,centerY);
+                allPoints.add(endPoint);
+            }
             draw(circle);
         }
     }
@@ -700,12 +723,11 @@ public class MainViewController implements Initializable {
 
         for (int i = elements.size() - 1; i >= 0; i--) {
             Node element = elements.get(i);
-            if (element.getClass() == LineCustom.class) {
+            if (element.getClass() == LineCustom.class){
                 elements.remove(i);
             } else if (element.getClass() == Circle.class) {
                 if (((Circle) element).getFill() == Color.LIGHTGRAY) {
                     elements.remove(i);
-                    break;
                 }
             }
         }
