@@ -15,6 +15,7 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         Scene scene = null;
+        // Load main FXML file
         try {
             FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("main-view.fxml"));
             scene = new Scene(fxmlLoader.load());
@@ -28,6 +29,7 @@ public class Main extends Application {
         double scaleX = screen.getOutputScaleX();
         double scaleY = screen.getOutputScaleY();
 
+        // Load icon
         Image icon = new Image(String.valueOf(Main.class.getResource("/images/icon.jpg")));
 
         try {
@@ -36,6 +38,7 @@ public class Main extends Application {
             System.out.println("Error adding icon to stage: " + e.getMessage());
         }
 
+        //Stage settings
         stage.setMinHeight(250);
         stage.setMinWidth(570);
         stage.setTitle("Pathfinding");
@@ -44,22 +47,22 @@ public class Main extends Application {
     }
 
 
-
+    // Error handling
     public static void main(String[] args) {
-        launch(args);
+
         try {
             checkArgs(args);
         } catch(noArgs e) {
             System.out.println(e.getMessage());
-            return;
         }
-        if (Arrays.asList(args).contains("printGraph")/*Objects.equals(args[0], "printGraph")*/){
+        launch(args);
+        if (Arrays.asList(args).contains("printGraph")){
             System.out.println("Graph:\n");
             System.out.println(MainViewController.graph.toString());
             System.out.println();
         }
 
-        if (Arrays.asList(args).contains("printPoints")/*Objects.equals(args[0], "printGraph")*/){
+        if (Arrays.asList(args).contains("printPoints")){
             System.out.println("Points:\n");
             for (Point2DCustom p : MainViewController.allPoints){
                 System.out.println(p);

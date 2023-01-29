@@ -1,6 +1,5 @@
 package application;
 
-import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -65,6 +64,7 @@ public class MainViewController implements Initializable {
     @FXML
     private Label coordinatesDisplay;
 
+    //Sort clockwise for generating polygons uniformly
     private static void sortPointsClockwise(Point2DCustom[] points, Point2DCustom center) {
         boolean changed;
         do {
@@ -80,6 +80,7 @@ public class MainViewController implements Initializable {
         } while (changed);
     }
 
+    //Compare points for sorting clockwise
     private static boolean comparePoint(Point2DCustom a, Point2DCustom b, Point2DCustom center) {
 
         if (a.getX() - center.getX() >= 0 && b.getX() - center.getX() < 0) {
@@ -114,6 +115,7 @@ public class MainViewController implements Initializable {
         return d1 > d2;
     }
 
+    //Verify if a line intersects any polygon
     public static boolean PolLine(List<PolygonCustom> polygons, LineCustom line) {
         double x1 = line.getStartX();
         double y1 = line.getStartY();
@@ -149,39 +151,48 @@ public class MainViewController implements Initializable {
                 }
             }
         }
-        //System.out.println(euclideanDistance(line.getStartPoint(),line.getEndPoint()));
         return true;
     }
 
+    //Check if a line intersects another line
     public static boolean lineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) {
 
         double denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3));
         double numerator1 = ((y1 - y3) * (x4 - x3)) - ((x1 - x3) * (y4 - y3));
         double numerator2 = ((y1 - y3) * (x2 - x1)) - ((x1 - x3) * (y2 - y1));
-
+        // Check if lines are coincident
         if (denominator == 0) return numerator1 == 0 && numerator2 == 0;
-
+        // Calculate ratios of intersection
         double r = numerator1 / denominator;
         double s = numerator2 / denominator;
+        // Round to 4 decimal places
         r = Math.round(r * 10000.0) / 10000.0;
         s = Math.round(s * 10000.0) / 10000.0;
+        // Return true if lines intersect (ratios are between 0 and 1)
         return (r > 0.0 && r < 1.0) && (s > 0.0 && s < 1.0);
     }
 
-    public static void calculateVisibiltyGraph() {
+    public static void calculateVisibilityGraph() {
+        //If a line can be drawn between the start and end points without intersecting any polygon, add the edge to the graph
         if ((PolLine(polygonListGlobal, new LineCustom(startPoint, endPoint)))) {
+            //Add edge from start to end and from end to start
             graph.addEdge(startPoint, new VisibleVertex(endPoint, 0.0));
             graph.addEdge(endPoint, new VisibleVertex(startPoint, 0.0));
         }
+        //Add edges between all points
         for (PolygonCustom pol : polygonListGlobal) {
             for (Point2DCustom currentPoint : pol.PointsList) {
+                //Add edge from the current point to its left and right neighbours
                 graph.addEdge(currentPoint, new VisibleVertex(pol.leftNeighbour(currentPoint), 0.0));
                 graph.addEdge(currentPoint, new VisibleVertex(pol.rightNeighbour(currentPoint), 0.0));
                 for (Point2DCustom comparedPoint : allPoints) {
+                    //If the compared point is not in the same polygon and is not the same as the current point
                     if (inSamePolygon(currentPoint, comparedPoint) == null && currentPoint != comparedPoint) {
+                        //If a line can be drawn between the two points without intersecting any polygon, add the edge to the graph
                         if ((PolLine(polygonListGlobal, new LineCustom(currentPoint, comparedPoint)))) {
                             graph.addEdge(currentPoint, new VisibleVertex(comparedPoint, 0.0));
                         }
+                        //If the compared point is not in any polygon and a line can be drawn between the two points, add the edge to the graph
                         if ((!inAnyPolygon(polygonListGlobal, comparedPoint)) && (PolLine(polygonListGlobal, new LineCustom(currentPoint, comparedPoint)))) {
                             graph.addEdge(comparedPoint, new VisibleVertex(currentPoint, 0.0));
                         }
@@ -190,7 +201,7 @@ public class MainViewController implements Initializable {
             }
         }
     }
-
+    //Checkers
     public static void checkPolGen(int tries) throws ShapeSizeException {
         if (tries >= 200) {
             throw new ShapeSizeException("Shapes are too many and/or too big. Reduce the shape number and/or size");
@@ -205,7 +216,7 @@ public class MainViewController implements Initializable {
             canvasIsEmpty = true;
         }
     }
-
+    //Check if a point is in any polygon
     public static boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt) {
         for (PolygonCustom p : plgList) {
             if (p.contains(pt)) {
@@ -214,7 +225,7 @@ public class MainViewController implements Initializable {
         }
         return false;
     }
-
+    //Check if two points are in the same polygon
     public static PolygonCustom inSamePolygon(Point2DCustom p1, Point2DCustom p2) {
         for (PolygonCustom pol : polygonListGlobal) {
             if (Arrays.asList(pol.PointsList).contains(p1) && Arrays.asList(pol.PointsList).contains(p2)) {
@@ -223,19 +234,19 @@ public class MainViewController implements Initializable {
         }
         return null;
     }
-
+    //Initializes the canvas
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         startPointCircle.setVisible(false);
         endPointCircle.setVisible(false);
         canvas.getChildren().add(cursor);
     }
-
+    //Adds an object to the canvas
     protected void draw(Node node) {
         canvas.getChildren().add(node);
         canvasIsEmpty = false;
     }
-
+    //Random color generator
     public void setRandomColor(Shape shape) {
         shape.setFill(new Color(
                 random.nextDouble(0, 1),
@@ -243,7 +254,7 @@ public class MainViewController implements Initializable {
                 random.nextDouble(0, 1),
                 1));
     }
-
+    //Clears the canvas
     @FXML
     public void clearCanvasEvent() {
         polygonListGlobal.clear();
@@ -261,11 +272,11 @@ public class MainViewController implements Initializable {
         allPoints.clear();
     }
 
+    //Generates random polygons
     public void genRandomPolygons() {
         double maxX = canvas.getWidth();
         double maxY = canvas.getHeight();
         int genTriesCount = 0;
-        boolean overLimit = false;
 
         List<PolygonCustom> polygonList = new ArrayList<>();
         int PolygonTotal = Integer.parseInt(POLYGON_NUMBER.getText());
@@ -274,20 +285,21 @@ public class MainViewController implements Initializable {
         for (int i = 0; i < PolygonTotal; i++) {
 
             Point2DCustom[] points;
-
+            // Loop until a valid polygon shape is generated
             do {
-                //polygon = new PolygonCustom();
+                // Generate random number of vertices between MIN_VERTICES and MAX_VERTICES
                 int verticesNumber = random.nextInt(Integer.parseInt(MIN_VERTICES.getText()), Integer.parseInt(MAX_VERTICES.getText()));
                 points = pointList.toArray(new Point2DCustom[verticesNumber]);
                 Point2DCustom centerPoint;
-
+                // Loop until a center point is found that is not inside any other polygon
                 do {
+                    // Generate random center point within canvas
                     centerPoint = new Point2DCustom(
                             random.nextDouble(SHAPE_SIZE.getValue(), maxX - SHAPE_SIZE.getValue()),
                             random.nextDouble(SHAPE_SIZE.getValue(), maxY - SHAPE_SIZE.getValue())
                     );
                 } while (inAnyPolygon(polygonList, centerPoint));
-
+                // Generate random vertices around the center point
                 for (int j = 0; j < verticesNumber; j++) {
                     points[j] = new Point2DCustom(
                             random.nextDouble(centerPoint.getX() - SHAPE_SIZE.getValue(), centerPoint.getX() + SHAPE_SIZE.getValue()),
@@ -298,8 +310,8 @@ public class MainViewController implements Initializable {
                 try {
                     checkPolGen(genTriesCount);
                 } catch (ShapeSizeException e) {
+                    // If polygon can't be generated, break the loop
                     System.out.println(e.getMessage());
-                    exceptionPopup(e.getMessage());
                     break outer;
                 }
             } while (intersectsAnyPolygon(polygonList, new PolygonCustom(points)));
@@ -313,7 +325,7 @@ public class MainViewController implements Initializable {
         polygonListGlobal = polygonList;
 
     }
-
+    //Generates random start and end points
     public void genRandomPoints() {
         double maxX = canvas.getWidth();
         double maxY = canvas.getHeight();
@@ -328,7 +340,7 @@ public class MainViewController implements Initializable {
 
         allPoints.add(startPoint);
         allPoints.add(endPoint);
-
+        //Settings for the start and end points
         startPointCircle = new Circle(startPoint.getX(), startPoint.getY(), 4, Color.LIGHTBLUE);
         endPointCircle = new Circle(endPoint.getX(), endPoint.getY(), 4, Color.DARKBLUE);
         startPointCircle.setVisible(true);
@@ -354,12 +366,12 @@ public class MainViewController implements Initializable {
     @FXML
     protected void mouseClicked(MouseEvent event) {
         if (drawToggle.isSelected()) {
-
+            //Check if the right mouse button is pressed
             if (event.getButton() == MouseButton.SECONDARY) {
                 removeLastPoint();
                 return;
             }
-
+            // Create a new Point2DCustom object for the current mouse position
             Point2DCustom currentPoint = new Point2DCustom(event.getX(), event.getY());
             pointList.add(currentPoint);
 
@@ -380,7 +392,8 @@ public class MainViewController implements Initializable {
             Circle circle = new Circle(currentPoint.getX(), currentPoint.getY(), 5);
             circle.setFill(Color.BLUE);
             draw(circle);
-
+            // If there is only one point in the list, return without drawing a line,
+            // otherwise, get the previous point in the list
             if (pointList.size() <= 1) return;
             Point2DCustom previousPoint = pointList.get(pointList.size() - 2);
             Line line = new Line(
@@ -430,6 +443,7 @@ public class MainViewController implements Initializable {
         }
     }
 
+    //Updates the toggle buttons
     @FXML
     protected void updateTogglesDraw(){
         setEnd.setSelected(false);
@@ -447,7 +461,7 @@ public class MainViewController implements Initializable {
         setStart.setSelected(false);
         drawToggle.setSelected(false);
     }
-
+    //Mouse checkers
     @FXML
     protected void mouseEntered() {
         coordinatesDisplay.setVisible(true);
@@ -458,7 +472,7 @@ public class MainViewController implements Initializable {
         canvas.getChildren().remove(cursor);
         coordinatesDisplay.setVisible(false);
     }
-
+    //Mouse movement
     @FXML
     protected void mouseMoved(MouseEvent event) {
         double mouseX = event.getX();
@@ -476,7 +490,6 @@ public class MainViewController implements Initializable {
             if (((Circle) element).getFill() != Color.RED) continue;
             if (((Circle) element).getRadius() != 5) continue;
 
-            //noinspection SuspiciousListRemoveInLoop
             elements.remove(i);
         }
 
@@ -484,7 +497,7 @@ public class MainViewController implements Initializable {
                 "  " +
                 "Y: " + Math.round(mouseY * 100f) / 100);
     }
-
+    //Deletes the points once a polygon is finished
     private void removeLastPoint() {
         List<Node> elements = canvas.getChildren();
 
@@ -504,7 +517,7 @@ public class MainViewController implements Initializable {
             pointList.remove(pointList.size() - 1);
         }
     }
-
+    //Clears the outline of the polygon
     private void clearOutline() {
         List<Node> elements = canvas.getChildren();
 
@@ -517,7 +530,7 @@ public class MainViewController implements Initializable {
             }
         }
     }
-
+    //Generates the polygon
     private void finishPolygon() {
         pointList.remove(pointList.size() - 1);
 
@@ -546,7 +559,7 @@ public class MainViewController implements Initializable {
     @FXML
     protected void moveHoverText() {
     }
-
+    //File importer
     @FXML
     protected void importFromFile() {
 
@@ -606,7 +619,7 @@ public class MainViewController implements Initializable {
             draw(circle);
         }
     }
-
+    //File exporter
     @FXML
     protected void exportToFile() {
         Stage filePickerWindow = new Stage();
@@ -664,7 +677,7 @@ public class MainViewController implements Initializable {
             throw new RuntimeException(e);
         }
     }
-
+    //File reader for JSON
     public String readAllLines(File file) {
         List<String> strings = new ArrayList<>();
 
@@ -683,7 +696,7 @@ public class MainViewController implements Initializable {
         }
         return output;
     }
-
+    //Collision detection between 2 polygons
     public boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape) {
         for (PolygonCustom p : plgList) {
             if (p.intersects(shape.getBoundsInParent())) {
@@ -692,7 +705,7 @@ public class MainViewController implements Initializable {
         }
         return false;
     }
-
+    //Pop up window for exceptions
     public void exceptionPopup(String message) {
         Scene scene = null;
         try {
@@ -703,7 +716,6 @@ public class MainViewController implements Initializable {
         }
 
         warningText = new Label(message);
-        //warningText.setText(message);
 
         warningStage.setResizable(false);
         warningStage.setTitle("Warning");
@@ -717,7 +729,7 @@ public class MainViewController implements Initializable {
         Stage stage = (Stage) warningPane.getScene().getWindow();
         stage.close();
     }
-
+    //Clears the previous found path
     private void clearPath() {
         List<Node> elements = canvas.getChildren();
 
@@ -732,12 +744,12 @@ public class MainViewController implements Initializable {
             }
         }
     }
-
+    //Pathfinding
     @FXML
     public void pathfind() {
         clearPath();
         graph = new Graph(allPoints.size());
-        calculateVisibiltyGraph();
+        calculateVisibilityGraph();
         graph.calculateEuclidieanDistances();
 
         if (allPaths.isSelected()) {
@@ -762,7 +774,7 @@ public class MainViewController implements Initializable {
             draw(pathLine);
         }
     }
-
+    //Exception classes
     static class ShapeSizeException extends Exception {
         public ShapeSizeException(String message) {
             super("\u001B[31m" + "ShapeSizeException: " + message + "\u001B[0m");

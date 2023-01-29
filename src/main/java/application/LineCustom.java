@@ -1,8 +1,8 @@
 package application;
-import java.util.List;
 
 public class LineCustom extends javafx.scene.shape.Line {
-
+    //Helper class for creating lines
+    //Constructor
     public LineCustom(Point2DCustom vertexA, Point2DCustom vertexB) {
         this.setStartX(vertexA.getX());
         this.setStartY(vertexA.getY());

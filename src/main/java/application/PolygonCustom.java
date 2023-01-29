@@ -1,6 +1,8 @@
 package application;
 public class PolygonCustom extends javafx.scene.shape.Polygon {
+    //Helper class for creating polygons
     protected Point2DCustom[] PointsList;
+    //Constructor
     public PolygonCustom(Point2DCustom[] points) {
         for (Point2DCustom point : points) {
             this.getPoints().add(point.getX());
@@ -12,6 +14,7 @@ public class PolygonCustom extends javafx.scene.shape.Polygon {
         return this.PointsList;
     }
 
+    //Checks the left/right neighbour of a point in a polygon
     public Point2DCustom leftNeighbour (Point2DCustom p){
         Point2DCustom result = null;
         for(int i = 0; i<this.PointsList.length; i++) {

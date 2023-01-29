@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public interface Collision {
+    // Interface for collision detection
     boolean inAnyPolygon(List<PolygonCustom> plgList, Point2DCustom pt);
     boolean intersectsAnyPolygon(List<PolygonCustom> plgList, Node shape);
 
