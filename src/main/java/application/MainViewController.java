@@ -281,14 +281,23 @@ public class MainViewController implements Initializable {
         List<PolygonCustom> polygonList = new ArrayList<>();
         int PolygonTotal = Integer.parseInt(POLYGON_NUMBER.getText());
 
+
         outer:
         for (int i = 0; i < PolygonTotal; i++) {
 
             Point2DCustom[] points;
             // Loop until a valid polygon shape is generated
             do {
+
                 // Generate random number of vertices between MIN_VERTICES and MAX_VERTICES
-                int verticesNumber = random.nextInt(Integer.parseInt(MIN_VERTICES.getText()), Integer.parseInt(MAX_VERTICES.getText()));
+                int verticesNumber=0;
+                if (Integer.parseInt(MAX_VERTICES.getText())>Integer.parseInt(MIN_VERTICES.getText())){
+                    verticesNumber = random.nextInt(Integer.parseInt(MIN_VERTICES.getText()), Integer.parseInt(MAX_VERTICES.getText()));
+                } else if(Integer.parseInt(MAX_VERTICES.getText())<Integer.parseInt(MIN_VERTICES.getText())){
+                    verticesNumber = random.nextInt(Integer.parseInt(MAX_VERTICES.getText()), Integer.parseInt(MIN_VERTICES.getText()));
+                } else {
+                    verticesNumber = Integer.parseInt(MIN_VERTICES.getText());
+                }
                 points = pointList.toArray(new Point2DCustom[verticesNumber]);
                 Point2DCustom centerPoint;
                 // Loop until a center point is found that is not inside any other polygon
@@ -421,6 +430,7 @@ public class MainViewController implements Initializable {
             startPoint = currentPoint;
             allPoints.add(startPoint);
             startPointCircle = new Circle(startPoint.getX(), startPoint.getY(), 4, Color.LIGHTBLUE);
+            clearPath();
             draw(startPointCircle);
             setStart.setSelected(false);
         } else if (setEnd.isSelected()) {
@@ -438,6 +448,7 @@ public class MainViewController implements Initializable {
             endPoint = currentPoint;
             allPoints.add(endPoint);
             endPointCircle = new Circle(endPoint.getX(), endPoint.getY(), 4, Color.DARKBLUE);
+            clearPath();
             draw(endPointCircle);
             setEnd.setSelected(false);
         }
